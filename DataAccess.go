@@ -155,6 +155,22 @@ func (cmd *GenerateModelsCommand) Init() error {
 			}
 			return rv.Len()-1 == i, nil
 		},
+		"set": func(values map[string]interface{}, name string, value interface{}) interface{} {
+			values[name] = value
+			return ""
+		},
+
+		"toNullName": func(s string) string {
+			// switch s {
+			// case "type":
+			// 	return "_type"
+			// case "if":
+			// 	return "_if"
+			// case "int":
+			// 	return "_int"
+			// }
+			return "null_" + s
+		},
 		"CamelCase":   CamelCase,
 		"Underscore":  Underscore,
 		"Pluralize":   Pluralize,
@@ -165,7 +181,7 @@ func (cmd *GenerateModelsCommand) Init() error {
 		"ToUpper":     strings.ToUpper,
 		"ToGoType":    ToGoTypeFromPostgres,
 		"ToNullType":  ToNullTypeFromPostgres,
-		"ToNullValue": ToNullValueFromPostgres,
+		//"ToNullValue": ToNullValueFromPostgres,
 	}
 
 	var e error
@@ -178,6 +194,13 @@ func (cmd *GenerateModelsCommand) Init() error {
 	if nil != e {
 		return e
 	}
+
+	cmd.template_model.New("toNullValue").Parse(template_sql_null_value)
+	if nil != e {
+		return e
+	}
+
+	// toNullValue = value.{{$x.Name}} = {{ToNullValue $x.Name $x.DataType}}
 	return nil
 }
 
@@ -251,45 +274,44 @@ package {{.Namespace}}
 import "github.com/Masterminds/squirrel"
 
 
-type SelectBuilder interface{
-  Columns(columns ...string) Sqlizer
-}
+// type SelectBuilder interface{
+//   Columns(columns ...string) squirrel.Sqlizer
+// }
 `
 
 var template_model_text = `type {{Typeify .table.Name}} struct { {{range $x := .columns }}
-  {{$x.Name}} {{ToGoType $x.DataType}}{{end}}
+  {{CamelCase $x.Name}} {{ToGoType $x.DataType}}{{end}}
 }
 
 type _{{Typeify .table.Name}}Model struct{
+  table_name   string
   column_names []string 
 } 
 
 func (self *_{{Typeify .table.Name}}Model) scan(scanner squirrel.RowScanner) (*{{Typeify .table.Name}}, error){
-  var value = {{Typeify .table.Name}}
-  {{$columns := .columns}}{{range $x := .columns }}{{if ne $x.Nullable "YES"}}
-  var {{$x.Name}} {{ToNullType $x.DataType}}{{end}}{{end}}
+  var value {{Typeify .table.Name}}
+  {{$columns := .columns}}{{range $x := .columns }}{{if eq $x.Nullable "YES"}}
+  var {{toNullName $x.Name}} {{ToNullType $x.DataType}}{{end}}{{end}}
 
-  e := scanner.Scan({{range $idx, $x := .columns }}{{if ne $x.Nullable "yes"}}{{$x.Name}}{{else}}value.{{$x.Name}}{{end}}{{if last $columns $idx | not}},
+  e := scanner.Scan({{range $idx, $x := .columns }}{{if ne $x.Nullable "YES"}}value.{{CamelCase $x.Name}}{{else}}{{toNullName $x.Name}}{{end}}{{if last $columns $idx | not}},
     {{end}}{{end}})
   if nil != e {
     return nil, e
   }
 
-  {{range $x := .columns }}{{if ne $x.Nullable "YES"}}
-  if {{$x.Name}}.Valid {
-    value.{{$x.Name}} = {{ToNullValue $x.Name $x.DataType}}
-  }
+  {{range $x := .columns }}{{if eq $x.Nullable "YES"}}
+  if {{toNullName $x.Name}}.Valid { {{template "toNullValue" $x}}}
   {{end}}{{end}}
 
   return nil, errors.New("NOT IMPLEMENTED")
 }
 
-func (self *_{{Typeify .table.Name}}Model) queryRowWith(builder SelectBuilder, db squirrel.QueryRower) (*{{Typeify .table.Name}}, error){
-  return self.scan(squirrel.QueryRowWith(builder.Columns(self.columns), db))
+func (self *_{{Typeify .table.Name}}Model) queryRowWith(builder squirrel.SelectBuilder, db squirrel.QueryRower) (*{{Typeify .table.Name}}, error){
+  return self.scan(squirrel.QueryRowWith(db, builder.Columns(self.column_names...).From(self.table_name)))
 }
 
-func (self *_{{Typeify .table.Name}}Model) queryWith(builder SelectBuilder, db squirrel.Queryer) ([]*{{Typeify .table.Name}}, error){
-  rows, e := squirrel.QueryWith(builder.Columns(self.columns), db)
+func (self *_{{Typeify .table.Name}}Model) queryWith(builder squirrel.SelectBuilder, db squirrel.Queryer) ([]*{{Typeify .table.Name}}, error){
+  rows, e := squirrel.QueryWith(db, builder.Columns(self.column_names...).From(self.table_name))
   if nil != e {
     return nil, e
   }
@@ -299,15 +321,57 @@ func (self *_{{Typeify .table.Name}}Model) queryWith(builder SelectBuilder, db s
     if nil != e {
       return nil, e
     }
+    results = append(results, v)
   }
   return results, rows.Err()
 }
 
+func (self *_{{Typeify .table.Name}}Model) FindById(id int64, db squirrel.QueryRower) (*{{Typeify .table.Name}}, error){
+  builder := squirrel.Select(self.column_names...).From(self.table_name).Where(squirrel.Eq{"id": id})
+  return self.queryRowWith(builder, db)
+}
+
 var {{Typeify .table.Name}}Model = _{{Typeify .table.Name}}Model{
+  table_name: "{{.table.Name}}",
   column_names: []string{ {{range $x := .columns }} "{{$x.Name}}", 
-  {{end}} }
+  {{end}} },
 }
 `
+
+var template_sql_null_value = `{{if eq .DataType "bool"}}
+      value.{{CamelCase .Name}} = {{toNullName .Name}}.Bool
+    {{else if eq .DataType "int4"}}
+      value.{{CamelCase .Name}} = int({{toNullName .Name}}.Int64)
+    {{else if eq .DataType "int8"}}
+      value.{{CamelCase .Name}} = {{toNullName .Name}}.Int64
+    {{else if eq .DataType "float4"}}
+      value.{{CamelCase .Name}} = {{toNullName .Name}}.Float64
+    {{else if eq .DataType "float8"}}
+      value.{{CamelCase .Name}} = {{toNullName .Name}}.Float64
+    {{else if eq .DataType "numeric"}}
+      value.{{CamelCase .Name}} = {{toNullName .Name}}.Float64
+    {{else if eq .DataType "varchar"}}
+      value.{{CamelCase .Name}} = {{toNullName .Name}}.String
+    {{else if eq .DataType "text"}}
+      value.{{CamelCase .Name}} = {{toNullName .Name}}.String
+    {{else if eq .DataType "timestamp"}}
+      value.{{CamelCase .Name}} = {{toNullName .Name}}.Time
+    {{else if eq .DataType "timestamptz"}}
+      value.{{CamelCase .Name}} = {{toNullName .Name}}.Time
+    {{else if eq .DataType "cidr"}}
+      if "" != {{toNullName .Name}}.String {
+        ipValue := net.ParseIP({{toNullName .Name}}.String)
+        if nil != ipValue {
+          value.{{CamelCase .Name}} = ipValue
+        } else if cidr, _, e := net.ParseCIDR({{toNullName .Name}}.String); nil == e {
+          value.{{CamelCase .Name}} = cidr
+        }
+      }
+    {{else if eq .DataType "macaddr"}}
+      value.{{CamelCase .Name}} = {{toNullName .Name}}.String
+    {{else}}
+      type({{.DataType}}) of value.{{CamelCase .Name}} is unsupported...........................................
+    {{end}}`
 
 func ToGoTypeFromPostgres(nm string) string {
 	switch nm {
@@ -356,30 +420,5 @@ func ToNullTypeFromPostgres(nm string) string {
 		return "sql.NullString"
 	default:
 		panic("'" + nm + "' is unsupported")
-	}
-}
-
-func ToNullValueFromPostgres(valueName, typeName string) string {
-	switch typeName {
-	case "bool":
-		return valueName + ".Bool"
-	case "int4":
-		return valueName + ".Int64"
-	case "int8":
-		return valueName + ".Int64"
-	case "float4":
-		return valueName + ".Float64"
-	case "float8", "numeric":
-		return valueName + ".Float64"
-	case "varchar", "text":
-		return valueName + ".String"
-	case "timestamp", "timestamptz":
-		return valueName + ".Time"
-	case "cidr":
-		return valueName + ".String"
-	case "macaddr":
-		return valueName + ".String"
-	default:
-		panic("'" + typeName + "' is unsupported")
 	}
 }
