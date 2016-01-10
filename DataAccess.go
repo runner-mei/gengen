@@ -358,7 +358,9 @@ func (self *_{{.table.ClassName}}Model) FindById(db squirrel.QueryRower, id int6
   return self.queryRowWith(db, builder)
 }
 
-{{if not .table.IsView }}{{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
+{{if not .table.IsView }}
+
+{{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
 func (self *_{{.table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) ({{$pk.GoType}}, error){ {{else}}
 func (self *_{{.table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) error { {{end}}
   sql := squirrel.Insert(self.table_name).Columns(self.column_names[1:]...).
@@ -371,8 +373,6 @@ func (self *_{{.table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *
 
 {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}{{if $pk.IsSequence}}
   if isPostgersql(db) {
-    
-
     if e := sql.Suffix("RETURNING \"{{$pk.GoName}}\"").RunWith(db).
         QueryRow().Scan(&value.{{$pk.GoName}}); nil != e {
       return value.{{$pk.GoName}}, e
@@ -407,9 +407,40 @@ func (self *_{{.table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *
   if nil != e {
     return e
   }
-  return nil
+  _, e = result.RowsAffected()
+  return e
 }
-{{end}}{{end}}
+{{end}}
+
+
+func (self *_{{.table.ClassName}}Model) DeleteIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) error { {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
+  return self.DeleteById(db, value.{{$pk.GoName}}) {{else}}
+  _, e := self.DeleteBy(db, squirrel.Eq{ {{range $column := .columns}} 
+      "{{$column.DbName}}": value.{{$column.GoName}},
+    {{end}} })
+  return e {{end}}
+}
+
+
+{{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
+func (self *_{{.table.ClassName}}Model) DeleteById(db squirrel.BaseRunner, key {{$pk.GoType}}) error {
+  _, e := self.DeleteBy(db, squirrel.Eq{"{{$pk.DbName}}": key})
+  return e
+}
+{{end}}
+
+func (self *_{{.table.ClassName}}Model) DeleteBy(db squirrel.BaseRunner, pred interface{}, args ...interface{}) (int64, error) {
+  result, e :=  squirrel.Delete("").
+    From(self.table_name).
+    Where(pred, args).RunWith(db).Exec();
+  if nil != e {
+    return 0, e
+  }
+  return result.RowsAffected()
+}
+
+
+{{end}} {{/* isView end */}}
 
 var {{.table.ClassName}}Model = _{{.table.ClassName}}Model{
   table_name: "{{.table.TableName}}",
