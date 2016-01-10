@@ -360,6 +360,7 @@ func (self *_{{.table.ClassName}}Model) FindById(db squirrel.QueryRower, id int6
 
 {{if not .table.IsView }}
 
+
 {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
 func (self *_{{.table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) ({{$pk.GoType}}, error){ {{else}}
 func (self *_{{.table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) error { {{end}}
@@ -412,6 +413,48 @@ func (self *_{{.table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *
 }
 {{end}}
 
+{{$columns := .columns}}
+func (self *_{{.table.ClassName}}Model) UpdateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) (error) {
+  sql := squirrel.Update(self.table_name).{{range $idx, $x := .columns }}
+    {{if not $x.IsPrimaryKey}}Set("{{$x.DbName}}", value.{{$x.GoName}}).{{end}}{{end}}
+    Where(squirrel.Eq{ {{range $column := .columns}} {{if $column.IsPrimaryKey}}"{{$column.DbName}}": value.{{$column.GoName}}, 
+      {{end}}{{end}} })
+
+  if isPlaceholderWithDollar(db) {
+    sql = sql.PlaceholderFormat(squirrel.Dollar)
+  }
+
+  result, e := sql.RunWith(db).Exec();
+  if nil != e {
+    return e
+  }
+  rowsAffected, e := result.RowsAffected()
+  if nil != e {
+    return e
+  }
+  if 0 == rowsAffected {
+    return errors.New("update failed")
+  }
+  return nil
+}
+
+func (self *_{{.table.ClassName}}Model) UpdateBy(db squirrel.BaseRunner, values map[string]interface{}, pred interface{}, args ...interface{}) (int64, error) {
+  sql := squirrel.Update(self.table_name)
+    for key, value := range values {
+      sql = sql.Set(key, value)
+    }
+
+  sql = sql.Where(pred, args)
+  if isPlaceholderWithDollar(db) {
+    sql = sql.PlaceholderFormat(squirrel.Dollar)
+  }
+
+  result, e := sql.RunWith(db).Exec();
+  if nil != e {
+    return 0, e
+  }
+  return result.RowsAffected()
+}
 
 func (self *_{{.table.ClassName}}Model) DeleteIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) error { {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
   return self.DeleteById(db, value.{{$pk.GoName}}) {{else}}
@@ -430,8 +473,7 @@ func (self *_{{.table.ClassName}}Model) DeleteById(db squirrel.BaseRunner, key {
 {{end}}
 
 func (self *_{{.table.ClassName}}Model) DeleteBy(db squirrel.BaseRunner, pred interface{}, args ...interface{}) (int64, error) {
-  result, e :=  squirrel.Delete("").
-    From(self.table_name).
+  result, e :=  squirrel.Delete("").From(self.table_name).
     Where(pred, args).RunWith(db).Exec();
   if nil != e {
     return 0, e
