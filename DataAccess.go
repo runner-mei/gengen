@@ -18,17 +18,25 @@ import (
 
 // Table entity in table `information_schema.tables`
 type Table struct {
-	Schema string `db:"table_schema" json:"-"`
-	Name   string `db:"table_name" json:"name"`
+	Schema        string
+	TableName     string
+	ClassName     string
+	IsView        bool
+	Columns       []Column
+	IsCombinedKey bool
+	PrimaryKey    []Column
 }
 
 // Column entity in table `information_schema.columns`
 type Column struct {
-	Name       string `db:"column_name" json:"name"`
-	Nullable   string `db:"is_nullable" json:"-"`
-	DataType   string `db:"udt_name"    json:"data_type"`
-	PrimaryKey bool   `db:"primary_key" json:"primary"`
-	IsSequence bool   `db:"is_sequence" json:"is_sequence"`
+	DbName string
+	GoName string
+	DbType string
+	GoType string
+
+	IsNullable   bool
+	IsPrimaryKey bool
+	IsSequence   bool
 }
 
 type dataAccess struct {
@@ -65,23 +73,30 @@ func (self *dataAccess) GetByTable(db *sql.DB, tableSchema, tableName string) ([
 
 	var columns []Column
 	for rows.Next() {
+		var isNullable sql.NullString
 		var primaryKey sql.NullBool
 		var isSequence sql.NullBool
 
 		var column Column
-		if e := rows.Scan(&column.Name,
-			&column.Nullable,
-			&column.DataType,
+		if e := rows.Scan(&column.DbName,
+			&isNullable,
+			&column.DbType,
 			&primaryKey,
 			&isSequence); nil != e {
 			return nil, e
 		}
+		if isNullable.Valid {
+			column.IsNullable = strings.ToLower(isNullable.String) == "yes"
+		}
 		if primaryKey.Valid {
-			column.PrimaryKey = primaryKey.Bool
+			column.IsPrimaryKey = primaryKey.Bool
 		}
 		if isSequence.Valid {
 			column.IsSequence = isSequence.Bool
 		}
+
+		column.GoName = CamelCase(column.DbName)
+		column.GoType = ToGoTypeFromDbType(column.DbType)
 		columns = append(columns, column)
 	}
 	return columns, rows.Err()
@@ -90,7 +105,7 @@ func (self *dataAccess) GetByTable(db *sql.DB, tableSchema, tableName string) ([
 // GetAll use to select all tables from `information_schema.tables`.
 func (self *dataAccess) GetAll(db *sql.DB, tableSchema string) ([]Table, error) {
 	queryString := fmt.Sprintf(`SELECT
-            t.table_schema, t.table_name
+            t.table_schema, t.table_name, t.table_type
         FROM
             information_schema.tables t
         LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
@@ -115,8 +130,12 @@ func (self *dataAccess) GetAll(db *sql.DB, tableSchema string) ([]Table, error) 
 	var tables []Table
 	for rows.Next() {
 		var table Table
-		if e := rows.Scan(&table.Schema, &table.Name); nil != e {
+		var tableType string
+		if e := rows.Scan(&table.Schema, &table.TableName, &tableType); nil != e {
 			return nil, e
+		}
+		if "view" == strings.ToLower(tableType) {
+			table.IsView = true
 		}
 		tables = append(tables, table)
 	}
@@ -179,7 +198,6 @@ func (cmd *GenerateModelsCommand) Init() error {
 		"Capitalize":  Capitalize,
 		"Typeify":     Typeify,
 		"ToUpper":     strings.ToUpper,
-		"ToGoType":    ToGoTypeFromPostgres,
 		"ToNullType":  ToNullTypeFromPostgres,
 		//"ToNullValue": ToNullValueFromPostgres,
 	}
@@ -199,8 +217,6 @@ func (cmd *GenerateModelsCommand) Init() error {
 	if nil != e {
 		return e
 	}
-
-	// toNullValue = value.{{$x.Name}} = {{ToNullValue $x.Name $x.DataType}}
 	return nil
 }
 
@@ -233,13 +249,15 @@ func (cmd *GenerateModelsCommand) Run(args []string) {
 	}
 
 	for _, table := range tables {
-		log.Println("GEN ", table.Name)
-
-		columns, e := DB.GetByTable(db, cmd.db_schema, table.Name)
+		log.Println("GEN ", table.TableName)
+		columns, e := DB.GetByTable(db, cmd.db_schema, table.TableName)
 		if nil != e {
-			log.Println("failed to read columns for", table.Name, "- ", e)
+			log.Println("failed to read columns for", table.TableName, "- ", e)
 			return
 		}
+		table.Columns = columns
+		table.IsCombinedKey, table.PrimaryKey = GetPrimaryKey(table.Columns)
+		table.ClassName = Typeify(strings.TrimPrefix(table.TableName, cmd.db_prefix))
 
 		if e := cmd.GenrateFromTable(out, table, columns); nil != e {
 			log.Println(e)
@@ -249,8 +267,6 @@ func (cmd *GenerateModelsCommand) Run(args []string) {
 }
 
 func (cmd *GenerateModelsCommand) GenrateFromTable(out io.Writer, table Table, columns []Column) error {
-	table.Name = strings.TrimPrefix(table.Name, cmd.db_prefix)
-
 	return cmd.template_model.Execute(out, map[string]interface{}{
 		"Namespace": cmd.ns,
 		"table":     table,
@@ -258,64 +274,75 @@ func (cmd *GenerateModelsCommand) GenrateFromTable(out io.Writer, table Table, c
 	})
 }
 
+func GetPrimaryKey(columns []Column) (bool, []Column) {
+	primaryKeys := make([]Column, 0, 4)
+	for _, column := range columns {
+		if column.IsPrimaryKey {
+			primaryKeys = append(primaryKeys, column)
+		}
+	}
+	return 1 != len(primaryKeys), primaryKeys
+}
+
 func init() {
 	command.On("generate", "从数据库的表模型生成代码", &GenerateModelsCommand{}, nil)
 }
-
-// Name       string `db:"column_name" json:"name"`
-// Nullable   string `db:"is_nullable" json:"-"`
-// DataType   string `db:"udt_name"    json:"data_type"`
-// PrimaryKey bool   `db:"primary_key" json:"primary"`
-// IsSequence bool   `db:"is_sequence" json:"is_sequence"`
 
 var template_header_text = `// file is generated by gengen
 package {{.Namespace}}
 
 import "github.com/Masterminds/squirrel"
 
+func isPostgersql(db interface{}) bool {
+  return true
+}
+
+func isPlaceholderWithDollar(db interface{}) bool {
+  return true
+}
 
 // type SelectBuilder interface{
 //   Columns(columns ...string) squirrel.Sqlizer
 // }
 `
 
-var template_model_text = `type {{Typeify .table.Name}} struct { {{range $x := .columns }}
-  {{CamelCase $x.Name}} {{ToGoType $x.DataType}}{{end}}
+var template_model_text = `type {{.table.ClassName}} struct { {{range $x := .columns }}
+  {{$x.GoName}} {{$x.GoType}}{{end}}
 }
 
-type _{{Typeify .table.Name}}Model struct{
+type _{{.table.ClassName}}Model struct{
   table_name   string
   column_names []string 
-} 
+}
 
-func (self *_{{Typeify .table.Name}}Model) scan(scanner squirrel.RowScanner) (*{{Typeify .table.Name}}, error){
-  var value {{Typeify .table.Name}}
-  {{$columns := .columns}}{{range $x := .columns }}{{if eq $x.Nullable "YES"}}
-  var {{toNullName $x.Name}} {{ToNullType $x.DataType}}{{end}}{{end}}
+func (self *_{{.table.ClassName}}Model) scan(scanner squirrel.RowScanner) (*{{.table.ClassName}}, error){
+  var value {{.table.ClassName}}
+  {{$columns := .columns}}{{range $x := .columns }}{{if $x.IsNullable}}
+  var {{toNullName $x.DbName}} {{ToNullType $x.DbType}}{{end}}{{end}}
 
-  e := scanner.Scan({{range $idx, $x := .columns }}{{if ne $x.Nullable "YES"}}value.{{CamelCase $x.Name}}{{else}}{{toNullName $x.Name}}{{end}}{{if last $columns $idx | not}},
+  e := scanner.Scan({{range $idx, $x := .columns }}{{if not $x.IsNullable}}value.{{$x.GoName}}{{else}}{{toNullName $x.DbName}}{{end}}{{if last $columns $idx | not}},
     {{end}}{{end}})
   if nil != e {
     return nil, e
   }
 
-  {{range $x := .columns }}{{if eq $x.Nullable "YES"}}
-  if {{toNullName $x.Name}}.Valid { {{template "toNullValue" $x}}}
+  {{range $x := .columns }}{{if $x.IsNullable}}
+  if {{toNullName $x.DbName}}.Valid { {{template "toNullValue" $x}}}
   {{end}}{{end}}
 
-  return nil, errors.New("NOT IMPLEMENTED")
+  return &value, nil
 }
 
-func (self *_{{Typeify .table.Name}}Model) queryRowWith(builder squirrel.SelectBuilder, db squirrel.QueryRower) (*{{Typeify .table.Name}}, error){
+func (self *_{{.table.ClassName}}Model) queryRowWith(db squirrel.QueryRower, builder squirrel.SelectBuilder) (*{{.table.ClassName}}, error){
   return self.scan(squirrel.QueryRowWith(db, builder.Columns(self.column_names...).From(self.table_name)))
 }
 
-func (self *_{{Typeify .table.Name}}Model) queryWith(builder squirrel.SelectBuilder, db squirrel.Queryer) ([]*{{Typeify .table.Name}}, error){
+func (self *_{{.table.ClassName}}Model) queryWith(db squirrel.Queryer, builder squirrel.SelectBuilder) ([]*{{.table.ClassName}}, error){
   rows, e := squirrel.QueryWith(db, builder.Columns(self.column_names...).From(self.table_name))
   if nil != e {
     return nil, e
   }
-  results := make([]*{{Typeify .table.Name}}, 0, 4)
+  results := make([]*{{.table.ClassName}}, 0, 4)
   for rows.Next() {
     v, e := self.scan(rows)
     if nil != e {
@@ -326,54 +353,107 @@ func (self *_{{Typeify .table.Name}}Model) queryWith(builder squirrel.SelectBuil
   return results, rows.Err()
 }
 
-func (self *_{{Typeify .table.Name}}Model) FindById(id int64, db squirrel.QueryRower) (*{{Typeify .table.Name}}, error){
+func (self *_{{.table.ClassName}}Model) FindById(db squirrel.QueryRower, id int64) (*{{.table.ClassName}}, error){
   builder := squirrel.Select(self.column_names...).From(self.table_name).Where(squirrel.Eq{"id": id})
-  return self.queryRowWith(builder, db)
+  return self.queryRowWith(db, builder)
 }
 
-var {{Typeify .table.Name}}Model = _{{Typeify .table.Name}}Model{
-  table_name: "{{.table.Name}}",
-  column_names: []string{ {{range $x := .columns }} "{{$x.Name}}", 
+{{if not .table.IsView }}{{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
+func (self *_{{.table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) ({{$pk.GoType}}, error){ {{else}}
+func (self *_{{.table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) error { {{end}}
+  sql := squirrel.Insert(self.table_name).Columns(self.column_names[1:]...).
+    Values({{$columns := .columns}}{{range $idx, $x := .columns }}value.{{$x.GoName}}{{if last $columns $idx | not}},
+    {{end}}{{end}})
+
+  if isPlaceholderWithDollar(db) {
+    sql = sql.PlaceholderFormat(squirrel.Dollar)
+  }
+
+{{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}{{if $pk.IsSequence}}
+  if isPostgersql(db) {
+    
+
+    if e := sql.Suffix("RETURNING \"{{$pk.GoName}}\"").RunWith(db).
+        QueryRow().Scan(&value.{{$pk.GoName}}); nil != e {
+      return value.{{$pk.GoName}}, e
+    }
+
+    return value.{{$pk.GoName}}, nil
+  }
+
+  result, e := sql.RunWith(db).Exec();
+  if nil != e {
+    return value.{{$pk.GoName}}, e
+  }
+  {{if eq $pk.GoType "int64"}}value.{{$pk.GoName}}, e = result.LastInsertId()
+  {{else}}pk, e := result.LastInsertId()
+  if nil != e {
+    return value.{{$pk.GoName}}, e
+  }
+  value.{{$pk.GoName}} = {{$pk.GoType}}(pk)
+  {{end}}
+  return value.{{$pk.GoName}}, e
+}
+{{else}}
+  result, e := sql.RunWith(db).Exec();
+  if nil != e {
+    return value.{{$pk.GoName}}, e
+  }
+  _, e = result.RowsAffected()
+  return value.{{$pk.GoName}}, e
+}
+{{end}}{{else}}
+  result, e := sql.RunWith(db).Exec();
+  if nil != e {
+    return e
+  }
+  return nil
+}
+{{end}}{{end}}
+
+var {{.table.ClassName}}Model = _{{.table.ClassName}}Model{
+  table_name: "{{.table.TableName}}",
+  column_names: []string{ {{range $x := .columns }} "{{$x.DbName}}", 
   {{end}} },
 }
 `
 
-var template_sql_null_value = `{{if eq .DataType "bool"}}
-      value.{{CamelCase .Name}} = {{toNullName .Name}}.Bool
-    {{else if eq .DataType "int4"}}
-      value.{{CamelCase .Name}} = int({{toNullName .Name}}.Int64)
-    {{else if eq .DataType "int8"}}
-      value.{{CamelCase .Name}} = {{toNullName .Name}}.Int64
-    {{else if eq .DataType "float4"}}
-      value.{{CamelCase .Name}} = {{toNullName .Name}}.Float64
-    {{else if eq .DataType "float8"}}
-      value.{{CamelCase .Name}} = {{toNullName .Name}}.Float64
-    {{else if eq .DataType "numeric"}}
-      value.{{CamelCase .Name}} = {{toNullName .Name}}.Float64
-    {{else if eq .DataType "varchar"}}
-      value.{{CamelCase .Name}} = {{toNullName .Name}}.String
-    {{else if eq .DataType "text"}}
-      value.{{CamelCase .Name}} = {{toNullName .Name}}.String
-    {{else if eq .DataType "timestamp"}}
-      value.{{CamelCase .Name}} = {{toNullName .Name}}.Time
-    {{else if eq .DataType "timestamptz"}}
-      value.{{CamelCase .Name}} = {{toNullName .Name}}.Time
-    {{else if eq .DataType "cidr"}}
-      if "" != {{toNullName .Name}}.String {
-        ipValue := net.ParseIP({{toNullName .Name}}.String)
+var template_sql_null_value = `{{if eq .DbType "bool"}}
+      value.{{.GoName}} = {{toNullName .DbName}}.Bool
+    {{else if eq .DbType "int4"}}
+      value.{{.GoName}} = int({{toNullName .DbName}}.Int64)
+    {{else if eq .DbType "int8"}}
+      value.{{.GoName}} = {{toNullName .DbName}}.Int64
+    {{else if eq .DbType "float4"}}
+      value.{{.GoName}} = {{toNullName .DbName}}.Float64
+    {{else if eq .DbType "float8"}}
+      value.{{.GoName}} = {{toNullName .DbName}}.Float64
+    {{else if eq .DbType "numeric"}}
+      value.{{.GoName}} = {{toNullName .DbName}}.Float64
+    {{else if eq .DbType "varchar"}}
+      value.{{.GoName}} = {{toNullName .DbName}}.String
+    {{else if eq .DbType "text"}}
+      value.{{.GoName}} = {{toNullName .DbName}}.String
+    {{else if eq .DbType "timestamp"}}
+      value.{{.GoName}} = {{toNullName .DbName}}.Time
+    {{else if eq .DbType "timestamptz"}}
+      value.{{.GoName}} = {{toNullName .DbName}}.Time
+    {{else if eq .DbType "cidr"}}
+      if "" != {{toNullName .DbName}}.String {
+        ipValue := net.ParseIP({{toNullName .DbName}}.String)
         if nil != ipValue {
-          value.{{CamelCase .Name}} = ipValue
-        } else if cidr, _, e := net.ParseCIDR({{toNullName .Name}}.String); nil == e {
-          value.{{CamelCase .Name}} = cidr
+          value.{{.GoName}} = ipValue
+        } else if cidr, _, e := net.ParseCIDR({{toNullName .DbName}}.String); nil == e {
+          value.{{.GoName}} = cidr
         }
       }
-    {{else if eq .DataType "macaddr"}}
-      value.{{CamelCase .Name}} = {{toNullName .Name}}.String
+    {{else if eq .DbType "macaddr"}}
+      value.{{.GoName}} = {{toNullName .DbName}}.String
     {{else}}
-      type({{.DataType}}) of value.{{CamelCase .Name}} is unsupported...........................................
+      type({{.DbType}}) of value.{{.DbName}} is unsupported...........................................
     {{end}}`
 
-func ToGoTypeFromPostgres(nm string) string {
+func ToGoTypeFromDbType(nm string) string {
 	switch nm {
 	case "bool":
 		return "bool"
