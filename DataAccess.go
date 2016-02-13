@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"database/sql"
 	"errors"
 	"flag"
@@ -8,6 +10,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"text/template"
@@ -150,6 +153,7 @@ type GenerateModelsCommand struct {
 	db_schema string
 	ns        string
 	db_prefix string
+	file      string
 
 	root            string
 	template_header *template.Template
@@ -162,6 +166,7 @@ func (cmd *GenerateModelsCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 	flag.StringVar(&cmd.db_schema, "db_schema", "public", "the db schema")
 	flag.StringVar(&cmd.ns, "namespace", "models", "the namespace name")
 	flag.StringVar(&cmd.db_prefix, "db_prefix", "tpt_", "the db prefix name")
+	flag.StringVar(&cmd.file, "file", "models.go", "the output target")
 	return fs
 }
 
@@ -239,7 +244,28 @@ func (cmd *GenerateModelsCommand) Run(args []string) {
 		return
 	}
 
-	out := os.Stdout
+	out := os.Stderr
+	switch strings.ToLower(cmd.file) {
+	case "stdout":
+		out = os.Stdout
+	case "stderr":
+		out = os.Stderr
+	case "":
+		out = os.Stderr
+	default:
+		out, e = os.OpenFile(cmd.file, os.O_TRUNC|os.O_CREATE|os.O_RDWR, 0)
+		if nil != e {
+			log.Println(e)
+			return
+		}
+		target := filepath.Join(filepath.Dir(cmd.file), "base.go")
+		if target != "base.go" {
+			if e = copyFile(cmd.ns, "base.go", target); nil != e {
+				log.Println(e)
+				return
+			}
+		}
+	}
 
 	if e := cmd.template_header.Execute(out, map[string]interface{}{
 		"Namespace": cmd.ns,
@@ -272,6 +298,40 @@ func (cmd *GenerateModelsCommand) GenrateFromTable(out io.Writer, table Table, c
 		"table":     table,
 		"columns":   columns,
 	})
+}
+
+func copyFile(ns, file, target string) error {
+	src, e := os.Open(file)
+	if nil != e {
+		return e
+	}
+	defer src.Close()
+
+	out, e := os.OpenFile(target, os.O_TRUNC|os.O_CREATE|os.O_RDWR, 0)
+	if nil != e {
+		return e
+	}
+	defer out.Close()
+
+	buf := bufio.NewReader(src)
+	for {
+		line, _, e := buf.ReadLine()
+		if nil != e {
+			if io.EOF == e {
+				break
+			}
+			return e
+		}
+
+		ss := bytes.Fields(bytes.TrimSpace(line))
+		if 2 == len(ss) && "package" == string(ss[0]) {
+			out.WriteString("package \"" + ns + "\"\r\n")
+		} else {
+			out.Write(line)
+			out.Write([]byte("\r\n"))
+		}
+	}
+	return nil
 }
 
 func GetPrimaryKey(columns []Column) (bool, []Column) {
@@ -311,8 +371,7 @@ var template_model_text = `type {{.table.ClassName}} struct { {{range $x := .col
 }
 
 type _{{.table.ClassName}}Model struct{
-  table_name   string
-  column_names []string 
+  DbModel
 }
 
 func (self *_{{.table.ClassName}}Model) scan(scanner squirrel.RowScanner) (*{{.table.ClassName}}, error){
@@ -334,11 +393,11 @@ func (self *_{{.table.ClassName}}Model) scan(scanner squirrel.RowScanner) (*{{.t
 }
 
 func (self *_{{.table.ClassName}}Model) queryRowWith(db squirrel.QueryRower, builder squirrel.SelectBuilder) (*{{.table.ClassName}}, error){
-  return self.scan(squirrel.QueryRowWith(db, builder.Columns(self.column_names...).From(self.table_name)))
+  return self.scan(squirrel.QueryRowWith(db, builder.Columns(self.ColumnNames...).From(self.TableName)))
 }
 
 func (self *_{{.table.ClassName}}Model) queryWith(db squirrel.Queryer, builder squirrel.SelectBuilder) ([]*{{.table.ClassName}}, error){
-  rows, e := squirrel.QueryWith(db, builder.Columns(self.column_names...).From(self.table_name))
+  rows, e := squirrel.QueryWith(db, builder.Columns(self.ColumnNames...).From(self.TableName))
   if nil != e {
     return nil, e
   }
@@ -354,7 +413,7 @@ func (self *_{{.table.ClassName}}Model) queryWith(db squirrel.Queryer, builder s
 }
 
 func (self *_{{.table.ClassName}}Model) FindById(db squirrel.QueryRower, id int64) (*{{.table.ClassName}}, error){
-  builder := squirrel.Select(self.column_names...).From(self.table_name).Where(squirrel.Eq{"id": id})
+  builder := squirrel.Select(self.ColumnNames...).From(self.TableName).Where(squirrel.Eq{"id": id})
   return self.queryRowWith(db, builder)
 }
 
@@ -364,7 +423,7 @@ func (self *_{{.table.ClassName}}Model) FindById(db squirrel.QueryRower, id int6
 {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
 func (self *_{{.table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) ({{$pk.GoType}}, error){ {{else}}
 func (self *_{{.table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) error { {{end}}
-  sql := squirrel.Insert(self.table_name).Columns(self.column_names[1:]...).
+  sql := squirrel.Insert(self.TableName).Columns(self.ColumnNames[1:]...).
     Values({{$columns := .columns}}{{range $idx, $x := .columns }}value.{{$x.GoName}}{{if last $columns $idx | not}},
     {{end}}{{end}})
 
@@ -415,7 +474,7 @@ func (self *_{{.table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *
 
 {{$columns := .columns}}
 func (self *_{{.table.ClassName}}Model) UpdateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) (error) {
-  sql := squirrel.Update(self.table_name).{{range $idx, $x := .columns }}
+  sql := squirrel.Update(self.TableName).{{range $idx, $x := .columns }}
     {{if not $x.IsPrimaryKey}}Set("{{$x.DbName}}", value.{{$x.GoName}}).{{end}}{{end}}
     Where(squirrel.Eq{ {{range $column := .columns}} {{if $column.IsPrimaryKey}}"{{$column.DbName}}": value.{{$column.GoName}}, 
       {{end}}{{end}} })
@@ -438,23 +497,6 @@ func (self *_{{.table.ClassName}}Model) UpdateIt(db squirrel.BaseRunner, value *
   return nil
 }
 
-func (self *_{{.table.ClassName}}Model) UpdateBy(db squirrel.BaseRunner, values map[string]interface{}, pred interface{}, args ...interface{}) (int64, error) {
-  sql := squirrel.Update(self.table_name)
-    for key, value := range values {
-      sql = sql.Set(key, value)
-    }
-
-  sql = sql.Where(pred, args)
-  if isPlaceholderWithDollar(db) {
-    sql = sql.PlaceholderFormat(squirrel.Dollar)
-  }
-
-  result, e := sql.RunWith(db).Exec();
-  if nil != e {
-    return 0, e
-  }
-  return result.RowsAffected()
-}
 
 func (self *_{{.table.ClassName}}Model) DeleteIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) error { {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
   return self.DeleteById(db, value.{{$pk.GoName}}) {{else}}
@@ -472,22 +514,14 @@ func (self *_{{.table.ClassName}}Model) DeleteById(db squirrel.BaseRunner, key {
 }
 {{end}}
 
-func (self *_{{.table.ClassName}}Model) DeleteBy(db squirrel.BaseRunner, pred interface{}, args ...interface{}) (int64, error) {
-  result, e :=  squirrel.Delete("").From(self.table_name).
-    Where(pred, args).RunWith(db).Exec();
-  if nil != e {
-    return 0, e
-  }
-  return result.RowsAffected()
-}
-
 
 {{end}} {{/* isView end */}}
 
 var {{.table.ClassName}}Model = _{{.table.ClassName}}Model{
-  table_name: "{{.table.TableName}}",
-  column_names: []string{ {{range $x := .columns }} "{{$x.DbName}}", 
+  DbModel: DbModel{TableName: "{{.table.TableName}}",
+  ColumnNames: []string{ {{range $x := .columns }} "{{$x.DbName}}", 
   {{end}} },
+  },
 }
 `
 
