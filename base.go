@@ -25,13 +25,15 @@ type ViewModel struct {
 }
 
 func (self *ViewModel) Where(exprs ...Expr) squirrel.StatementBuilderType {
+	if len(exprs) == 1 {
+		return builder.Append(squirrel.StatementBuilder, "WhereParts", exprs[0]).(squirrel.StatementBuilderType)
+	}
 	sqlizers := make([]squirrel.Sqlizer, 0, len(exprs))
 	for _, exp := range exprs {
 		sqlizers = append(sqlizers, exp)
 	}
 
-	pred, args, _ := squirrel.And(sqlizers).ToSql()
-	return squirrel.StatementBuilderType(builder.Append(squirrel.StatementBuilder, "WhereParts", pred, args).(builder.Builder))
+	return builder.Append(squirrel.StatementBuilder, "WhereParts", squirrel.And(sqlizers)).(squirrel.StatementBuilderType)
 }
 
 func (self *ViewModel) UpdateBy(db squirrel.BaseRunner, values map[string]interface{}, pred interface{}, args ...interface{}) (int64, error) {
@@ -142,6 +144,13 @@ type Expr struct {
 }
 
 func (self Expr) ToSql() (string, []interface{}, error) {
+	if sqlizer, ok := self.Value.(squirrel.Sqlizer); ok {
+		sub_sqlstr, sub_args, e := sqlizer.ToSql()
+		if nil != e {
+			return "", nil, e
+		}
+		return self.Column.Name + " " + self.Operator + " " + sub_sqlstr, sub_args, nil
+	}
 	return self.Column.Name + " " + self.Operator + " ? ", []interface{}{self.Value}, nil
 }
 
