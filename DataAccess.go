@@ -218,8 +218,9 @@ func (cmd *GenerateModelsCommand) Init() error {
 		"list_join": func(columns []Column) interface{} {
 			var buf bytes.Buffer
 			for _, column := range columns {
+				buf.WriteString("\"")
 				buf.WriteString(column.DbName)
-				buf.WriteString(",")
+				buf.WriteString("\",")
 			}
 			if buf.Len() > 0 {
 				buf.Truncate(buf.Len() - 1)
@@ -464,7 +465,7 @@ func (self *_{{.table.ClassName}}Model) FindById(db squirrel.QueryRower, id int6
 {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
 func (self *_{{.table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) ({{$pk.GoType}}, error){ {{else}}
 func (self *_{{.table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) error { {{end}}
-    {{$columns := .columns | list_create}}sql := squirrel.Insert(self.TableName).Columns(list_join $columns).
+    {{$columns := .columns | list_create}}sql := squirrel.Insert(self.TableName).Columns({{list_join $columns}}).
     Values({{range $idx, $x := $columns }}value.{{$x.GoName}}{{if last $columns $idx | not}},
     {{end}}{{end}})
 

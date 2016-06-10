@@ -137,6 +137,10 @@ func (self *ColumnModel) NEQ(value interface{}) Expr {
 	return Expr{Column: self, Operator: "<>", Value: value}
 }
 
+func (self *ColumnModel) EXISTS(value interface{}) Expr {
+	return Expr{Column: self, Operator: "EXISTS", Value: value}
+}
+
 type Expr struct {
 	Column   *ColumnModel
 	Operator string
