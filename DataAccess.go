@@ -183,6 +183,49 @@ func (cmd *GenerateModelsCommand) Init() error {
 			values[name] = value
 			return ""
 		},
+		"list_create": func(columns []Column) interface{} {
+			filterd_columns := make([]Column, 0, len(columns))
+			for _, column := range columns {
+				found := false
+				for _, s := range []string{"id"} {
+					if s == column.DbName {
+						found = true
+						break
+					}
+				}
+				if !found {
+					filterd_columns = append(filterd_columns, column)
+				}
+			}
+			return filterd_columns
+		},
+		"list_update": func(columns []Column) interface{} {
+			filterd_columns := make([]Column, 0, len(columns))
+			for _, column := range columns {
+				found := false
+				for _, s := range []string{"id", "created_at"} {
+					if s == column.DbName {
+						found = true
+						break
+					}
+				}
+				if !found {
+					filterd_columns = append(filterd_columns, column)
+				}
+			}
+			return filterd_columns
+		},
+		"list_join": func(columns []Column) interface{} {
+			var buf bytes.Buffer
+			for _, column := range columns {
+				buf.WriteString(column.DbName)
+				buf.WriteString(",")
+			}
+			if buf.Len() > 0 {
+				buf.Truncate(buf.Len() - 1)
+			}
+			return buf.String()
+		},
 
 		"toNullName": func(s string) string {
 			// switch s {
@@ -358,7 +401,7 @@ import (
 `
 
 var template_model_text = `type {{.table.ClassName}} struct { {{range $x := .columns }}
-  {{$x.GoName}} {{$x.GoType}}{{end}}
+  {{$x.GoName}} {{$x.GoType}}` + "\t`json:\"{{$x.DbName}},omitempty\"`" + `{{end}}
 }
 
 
@@ -421,8 +464,8 @@ func (self *_{{.table.ClassName}}Model) FindById(db squirrel.QueryRower, id int6
 {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
 func (self *_{{.table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) ({{$pk.GoType}}, error){ {{else}}
 func (self *_{{.table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) error { {{end}}
-  sql := squirrel.Insert(self.TableName).Columns(self.ColumnNames[1:]...).
-    Values({{$columns := .columns}}{{range $idx, $x := .columns }}value.{{$x.GoName}}{{if last $columns $idx | not}},
+    {{$columns := .columns | list_create}}sql := squirrel.Insert(self.TableName).Columns(list_join $columns).
+    Values({{range $idx, $x := $columns }}value.{{$x.GoName}}{{if last $columns $idx | not}},
     {{end}}{{end}})
 
   if isPlaceholderWithDollar(db) {
@@ -472,7 +515,7 @@ func (self *_{{.table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *
 
 {{$columns := .columns}}
 func (self *_{{.table.ClassName}}Model) UpdateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) (error) {
-  sql := squirrel.Update(self.TableName).{{range $idx, $x := .columns }}
+  {{$columns := .columns | list_update}}sql := squirrel.Update(self.TableName).{{range $idx, $x := $columns }}
     {{if not $x.IsPrimaryKey}}Set("{{$x.DbName}}", value.{{$x.GoName}}).{{end}}{{end}}
     Where(squirrel.Eq{ {{range $column := .columns}} {{if $column.IsPrimaryKey}}"{{$column.DbName}}": value.{{$column.GoName}}, 
       {{end}}{{end}} })
