@@ -248,6 +248,12 @@ func (cmd *GenerateModelsCommand) Init() error {
 		"Typeify":     Typeify,
 		"ToUpper":     strings.ToUpper,
 		"ToNullType":  ToNullTypeFromPostgres,
+		"firstLower": func(s string) string {
+			if "" == s {
+				return s
+			}
+			return strings.ToLower(s[:1]) + s[1:]
+		},
 		//"ToNullValue": ToNullValueFromPostgres,
 	}
 
@@ -406,17 +412,17 @@ var template_model_text = `type {{.table.ClassName}} struct { {{range $x := .col
 }
 
 
-type _{{.table.ClassName}}Columns struct{
+type {{firstLower .table.ClassName}}Columns struct{
   {{range $x := .columns }}{{ToUpper $x.GoName}} ColumnModel
   {{end}}
 }
 
-type _{{.table.ClassName}}Model struct{
+type {{firstLower .table.ClassName}}Model struct{
   {{if .table.IsView }}ViewModel{{else}}DbModel{{end}}
-  C  _{{.table.ClassName}}Columns
+  C {{firstLower .table.ClassName}}Columns
 }
 
-func (self *_{{.table.ClassName}}Model) scan(scanner squirrel.RowScanner) (*{{.table.ClassName}}, error){
+func (self *{{firstLower .table.ClassName}}Model) scan(scanner squirrel.RowScanner) (*{{.table.ClassName}}, error){
   var value {{.table.ClassName}}
   {{$columns := .columns}}{{range $x := .columns }}{{if $x.IsNullable}}
   var {{toNullName $x.DbName}} {{ToNullType $x.DbType}}{{end}}{{end}}
@@ -434,11 +440,11 @@ func (self *_{{.table.ClassName}}Model) scan(scanner squirrel.RowScanner) (*{{.t
   return &value, nil
 }
 
-func (self *_{{.table.ClassName}}Model) queryRowWith(db squirrel.QueryRower, builder squirrel.SelectBuilder) (*{{.table.ClassName}}, error){
+func (self *{{firstLower .table.ClassName}}Model) queryRowWith(db squirrel.QueryRower, builder squirrel.SelectBuilder) (*{{.table.ClassName}}, error){
   return self.scan(squirrel.QueryRowWith(db, builder.Columns(self.ColumnNames...).From(self.TableName)))
 }
 
-func (self *_{{.table.ClassName}}Model) queryWith(db squirrel.Queryer, builder squirrel.SelectBuilder) ([]*{{.table.ClassName}}, error){
+func (self *{{firstLower .table.ClassName}}Model) queryWith(db squirrel.Queryer, builder squirrel.SelectBuilder) ([]*{{.table.ClassName}}, error){
   rows, e := squirrel.QueryWith(db, builder.Columns(self.ColumnNames...).From(self.TableName))
   if nil != e {
     return nil, e
@@ -454,7 +460,7 @@ func (self *_{{.table.ClassName}}Model) queryWith(db squirrel.Queryer, builder s
   return results, rows.Err()
 }
 
-func (self *_{{.table.ClassName}}Model) FindById(db squirrel.QueryRower, id int64) (*{{.table.ClassName}}, error){
+func (self *{{firstLower .table.ClassName}}Model) FindById(db squirrel.QueryRower, id int64) (*{{.table.ClassName}}, error){
   builder := squirrel.Select(self.ColumnNames...).From(self.TableName).Where(squirrel.Eq{"id": id})
   return self.queryRowWith(db, builder)
 }
@@ -463,8 +469,8 @@ func (self *_{{.table.ClassName}}Model) FindById(db squirrel.QueryRower, id int6
 
 
 {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
-func (self *_{{.table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) ({{$pk.GoType}}, error){ {{else}}
-func (self *_{{.table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) error { {{end}}
+func (self *{{firstLower .table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) ({{$pk.GoType}}, error){ {{else}}
+func (self *{{firstLower .table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) error { {{end}}
     {{$columns := .columns | list_create}}sql := squirrel.Insert(self.TableName).Columns({{list_join $columns}}).
     Values({{range $idx, $x := $columns }}value.{{$x.GoName}}{{if last $columns $idx | not}},
     {{end}}{{end}})
@@ -515,7 +521,7 @@ func (self *_{{.table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *
 {{end}}
 
 {{$columns := .columns}}
-func (self *_{{.table.ClassName}}Model) UpdateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) (error) {
+func (self *{{firstLower .table.ClassName}}Model) UpdateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) (error) {
   {{$columns := .columns | list_update}}sql := squirrel.Update(self.TableName).{{range $idx, $x := $columns }}
     {{if not $x.IsPrimaryKey}}Set("{{$x.DbName}}", value.{{$x.GoName}}).{{end}}{{end}}
     Where(squirrel.Eq{ {{range $column := .columns}} {{if $column.IsPrimaryKey}}"{{$column.DbName}}": value.{{$column.GoName}}, 
@@ -540,7 +546,7 @@ func (self *_{{.table.ClassName}}Model) UpdateIt(db squirrel.BaseRunner, value *
 }
 
 
-func (self *_{{.table.ClassName}}Model) DeleteIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) error { {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
+func (self *{{firstLower .table.ClassName}}Model) DeleteIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) error { {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
   return self.DeleteById(db, value.{{$pk.GoName}}) {{else}}
   _, e := self.DeleteBy(db, squirrel.Eq{ {{range $column := .columns}} 
       "{{$column.DbName}}": value.{{$column.GoName}},
@@ -550,7 +556,7 @@ func (self *_{{.table.ClassName}}Model) DeleteIt(db squirrel.BaseRunner, value *
 
 
 {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
-func (self *_{{.table.ClassName}}Model) DeleteById(db squirrel.BaseRunner, key {{$pk.GoType}}) error {
+func (self *{{firstLower .table.ClassName}}Model) DeleteById(db squirrel.BaseRunner, key {{$pk.GoType}}) error {
   _, e := self.DeleteBy(db, squirrel.Eq{"{{$pk.DbName}}": key})
   return e
 }
@@ -559,7 +565,7 @@ func (self *_{{.table.ClassName}}Model) DeleteById(db squirrel.BaseRunner, key {
 
 {{end}} {{/* isView end */}}
 
-var {{.table.ClassName}}Model = _{{.table.ClassName}}Model{
+var {{.table.ClassName}}Model = {{firstLower .table.ClassName}}Model{
   {{if .table.IsView }}ViewModel: ViewModel{TableName: "{{.table.TableName}}",
   ColumnNames: []string{ {{range $x := .columns }} "{{$x.DbName}}", 
   {{end}} }},{{else}}DbModel: DbModel{ViewModel: ViewModel{TableName: "{{.table.TableName}}",
@@ -568,7 +574,7 @@ var {{.table.ClassName}}Model = _{{.table.ClassName}}Model{
   KeyNames: []string{ {{range $x := .columns }} {{if $x.IsPrimaryKey }}"{{$x.DbName}}", 
   {{end}}{{end}} },
   },{{end}}
-  C: _{{.table.ClassName}}Columns{ {{range $x := .columns }}{{ToUpper $x.GoName}}: ColumnModel{"{{$x.DbName}}"},
+  C: {{firstLower .table.ClassName}}Columns{ {{range $x := .columns }}{{ToUpper $x.GoName}}: ColumnModel{"{{$x.DbName}}"},
     {{end}}},
 }
 `
