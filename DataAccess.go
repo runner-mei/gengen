@@ -16,7 +16,7 @@ import (
 	"text/template"
 
 	_ "github.com/lib/pq"
-	"github.com/rakyll/command"
+	"github.com/runner-mei/command"
 )
 
 // Table entity in table `information_schema.tables`
@@ -99,7 +99,11 @@ func (self *dataAccess) GetByTable(db *sql.DB, tableSchema, tableName string) ([
 		}
 
 		column.GoName = CamelCase(column.DbName)
-		column.GoType = ToGoTypeFromDbType(column.DbType)
+		if "id" == column.DbName && "int4" == column.DbType {
+			column.GoType = "int64"
+		} else {
+			column.GoType = ToGoTypeFromDbType(column.DbType)
+		}
 		columns = append(columns, column)
 	}
 	return columns, rows.Err()
@@ -407,10 +411,28 @@ import (
 // }
 `
 
-var template_model_text = `type {{.table.ClassName}} struct { {{range $x := .columns }}
-  {{$x.GoName}} {{$x.GoType}}` + "\t`json:\"{{$x.DbName}},omitempty\"`" + `{{end}}
+var template_model_text = `type {{.table.ClassName}} struct { {{range $x := .columns }}{{if eq "Id" $x.GoName}}
+  {{$x.GoName}} int64` + "\t`json:\"id,omitempty\"`" + `
+  {{else}}{{$x.GoName}} {{$x.GoType}}` + "\t`json:\"{{$x.DbName}},omitempty\"`" + `{{end}}
+{{end}}
 }
 
+{{if not .table.IsView }}
+
+{{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
+func (self *{{.table.ClassName}}) CreateIt(db squirrel.BaseRunner) ({{$pk.GoType}}, error){ {{else}}
+func (self *{{.table.ClassName}}) CreateIt(db squirrel.BaseRunner) error { {{end}}
+  return {{.table.ClassName}}Model.CreateIt(db, self)
+}
+
+func (self *{{.table.ClassName}}) UpdateIt(db squirrel.BaseRunner) error {
+  return {{.table.ClassName}}Model.UpdateIt(db, self)
+}
+
+func (self *{{.table.ClassName}}) DeleteIt(db squirrel.BaseRunner) error { 
+  return {{.table.ClassName}}Model.DeleteIt(db, self)
+}
+{{end}}
 
 type {{firstLower .table.ClassName}}Columns struct{
   {{range $x := .columns }}{{ToUpper $x.GoName}} ColumnModel
@@ -438,6 +460,10 @@ func (self *{{firstLower .table.ClassName}}Model) scan(scanner squirrel.RowScann
   {{end}}{{end}}
 
   return &value, nil
+}
+
+func (self *{{firstLower .table.ClassName}}Model) Query(db squirrel.Queryer, exprs ...Expr) ([]*{{.table.ClassName}}, error) {
+  return self.queryWith(db, self.Where(exprs...).Select())
 }
 
 func (self *{{firstLower .table.ClassName}}Model) queryRowWith(db squirrel.QueryRower, builder squirrel.SelectBuilder) (*{{.table.ClassName}}, error){
@@ -581,6 +607,8 @@ var {{.table.ClassName}}Model = {{firstLower .table.ClassName}}Model{
 
 var template_sql_null_value = `{{if eq .DbType "bool"}}
       value.{{.GoName}} = {{toNullName .DbName}}.Bool
+    {{else if eq .GoType "int64"}}
+      value.{{.GoName}} = {{toNullName .DbName}}.Int64
     {{else if eq .DbType "int4"}}
       value.{{.GoName}} = int({{toNullName .DbName}}.Int64)
     {{else if eq .DbType "int8"}}

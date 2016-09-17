@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rakyll/command"
+	"github.com/runner-mei/command"
 )
 
 type versionCommand struct {
