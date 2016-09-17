@@ -462,15 +462,11 @@ func (self *{{firstLower .table.ClassName}}Model) scan(scanner squirrel.RowScann
   return &value, nil
 }
 
-func (self *{{firstLower .table.ClassName}}Model) Query(db squirrel.Queryer, exprs ...Expr) ([]*{{.table.ClassName}}, error) {
-  return self.queryWith(db, self.Where(exprs...).Select())
-}
-
-func (self *{{firstLower .table.ClassName}}Model) queryRowWith(db squirrel.QueryRower, builder squirrel.SelectBuilder) (*{{.table.ClassName}}, error){
+func (self *{{firstLower .table.ClassName}}Model) QueryRowWith(db squirrel.QueryRower, builder squirrel.SelectBuilder) (*{{.table.ClassName}}, error){
   return self.scan(squirrel.QueryRowWith(db, builder.Columns(self.ColumnNames...).From(self.TableName)))
 }
 
-func (self *{{firstLower .table.ClassName}}Model) queryWith(db squirrel.Queryer, builder squirrel.SelectBuilder) ([]*{{.table.ClassName}}, error){
+func (self *{{firstLower .table.ClassName}}Model) QueryWith(db squirrel.Queryer, builder squirrel.SelectBuilder) ([]*{{.table.ClassName}}, error){
   rows, e := squirrel.QueryWith(db, builder.Columns(self.ColumnNames...).From(self.TableName))
   if nil != e {
     return nil, e
