@@ -484,7 +484,7 @@ func (self *{{firstLower .table.ClassName}}Model) QueryWith(db squirrel.Queryer,
 
 func (self *{{firstLower .table.ClassName}}Model) FindById(db squirrel.QueryRower, id int64) (*{{.table.ClassName}}, error){
   builder := squirrel.Select(self.ColumnNames...).From(self.TableName).Where(squirrel.Eq{"id": id})
-  return self.queryRowWith(db, builder)
+  return self.QueryRowWith(db, builder)
 }
 
 {{if not .table.IsView }}
