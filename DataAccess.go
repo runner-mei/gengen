@@ -28,6 +28,8 @@ type Table struct {
 	Columns       []Column
 	IsCombinedKey bool
 	PrimaryKey    []Column
+	HasCreatedAt  bool
+	HasUpdatedAt  bool
 }
 
 // Column entity in table `information_schema.columns`
@@ -141,6 +143,7 @@ func (self *dataAccess) GetAll(db *sql.DB, tableSchema string) ([]Table, error) 
 		if e := rows.Scan(&table.Schema, &table.TableName, &tableType); nil != e {
 			return nil, e
 		}
+
 		if "view" == strings.ToLower(tableType) {
 			table.IsView = true
 		}
@@ -337,6 +340,15 @@ func (cmd *GenerateModelsCommand) Run(args []string) {
 		table.IsCombinedKey, table.PrimaryKey = GetPrimaryKey(table.Columns)
 		table.ClassName = Typeify(strings.TrimPrefix(table.TableName, cmd.db_prefix))
 
+		for _, column := range columns {
+			if "created_at" == column.DbName {
+				table.HasCreatedAt = true
+			}
+			if "updated_at" == column.DbName {
+				table.HasUpdatedAt = true
+			}
+		}
+
 		if e := cmd.GenrateFromTable(out, table, columns); nil != e {
 			log.Println(e)
 			return
@@ -449,7 +461,7 @@ func (self *{{firstLower .table.ClassName}}Model) scan(scanner squirrel.RowScann
   {{$columns := .columns}}{{range $x := .columns }}{{if $x.IsNullable}}
   var {{toNullName $x.DbName}} {{ToNullType $x.DbType}}{{end}}{{end}}
 
-  e := scanner.Scan({{range $idx, $x := .columns }}{{if not $x.IsNullable}}value.{{$x.GoName}}{{else}}{{toNullName $x.DbName}}{{end}}{{if last $columns $idx | not}},
+  e := scanner.Scan({{range $idx, $x := .columns }}{{if not $x.IsNullable}}&value.{{$x.GoName}}{{else}}&{{toNullName $x.DbName}}{{end}}{{if last $columns $idx | not}},
     {{end}}{{end}})
   if nil != e {
     return nil, e
@@ -463,10 +475,17 @@ func (self *{{firstLower .table.ClassName}}Model) scan(scanner squirrel.RowScann
 }
 
 func (self *{{firstLower .table.ClassName}}Model) QueryRowWith(db squirrel.QueryRower, builder squirrel.SelectBuilder) (*{{.table.ClassName}}, error){
+  if isPlaceholderWithDollar(db) {
+    builder = builder.PlaceholderFormat(squirrel.Dollar)
+  }
   return self.scan(squirrel.QueryRowWith(db, builder.Columns(self.ColumnNames...).From(self.TableName)))
 }
 
 func (self *{{firstLower .table.ClassName}}Model) QueryWith(db squirrel.Queryer, builder squirrel.SelectBuilder) ([]*{{.table.ClassName}}, error){
+  if isPlaceholderWithDollar(db) {
+    builder = builder.PlaceholderFormat(squirrel.Dollar)
+  }
+
   rows, e := squirrel.QueryWith(db, builder.Columns(self.ColumnNames...).From(self.TableName))
   if nil != e {
     return nil, e
@@ -483,7 +502,7 @@ func (self *{{firstLower .table.ClassName}}Model) QueryWith(db squirrel.Queryer,
 }
 
 func (self *{{firstLower .table.ClassName}}Model) FindById(db squirrel.QueryRower, id int64) (*{{.table.ClassName}}, error){
-  builder := squirrel.Select(self.ColumnNames...).From(self.TableName).Where(squirrel.Eq{"id": id})
+  builder := squirrel.Select().From(self.TableName).Where(squirrel.Eq{"id": id})
   return self.QueryRowWith(db, builder)
 }
 
@@ -493,17 +512,19 @@ func (self *{{firstLower .table.ClassName}}Model) FindById(db squirrel.QueryRowe
 {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
 func (self *{{firstLower .table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) ({{$pk.GoType}}, error){ {{else}}
 func (self *{{firstLower .table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) error { {{end}}
-    {{$columns := .columns | list_create}}sql := squirrel.Insert(self.TableName).Columns({{list_join $columns}}).
+    {{if .table.HasCreatedAt}}value.CreatedAt = time.Now()
+    {{end}}{{if .table.HasUpdatedAt}}value.UpdatedAt = time.Now()
+    {{end}}{{$columns := .columns | list_create}}builder := squirrel.Insert(self.TableName).Columns({{list_join $columns}}).
     Values({{range $idx, $x := $columns }}value.{{$x.GoName}}{{if last $columns $idx | not}},
     {{end}}{{end}})
 
   if isPlaceholderWithDollar(db) {
-    sql = sql.PlaceholderFormat(squirrel.Dollar)
+    builder = builder.PlaceholderFormat(squirrel.Dollar)
   }
 
 {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}{{if $pk.IsSequence}}
   if isPostgersql(db) {
-    if e := sql.Suffix("RETURNING \"{{$pk.GoName}}\"").RunWith(db).
+    if e := builder.Suffix("RETURNING \"{{$pk.GoName}}\"").RunWith(db).
         QueryRow().Scan(&value.{{$pk.GoName}}); nil != e {
       return value.{{$pk.GoName}}, e
     }
@@ -511,7 +532,7 @@ func (self *{{firstLower .table.ClassName}}Model) CreateIt(db squirrel.BaseRunne
     return value.{{$pk.GoName}}, nil
   }
 
-  result, e := sql.RunWith(db).Exec();
+  result, e := builder.RunWith(db).Exec();
   if nil != e {
     return value.{{$pk.GoName}}, e
   }
@@ -525,7 +546,7 @@ func (self *{{firstLower .table.ClassName}}Model) CreateIt(db squirrel.BaseRunne
   return value.{{$pk.GoName}}, e
 }
 {{else}}
-  result, e := sql.RunWith(db).Exec();
+  result, e := builder.RunWith(db).Exec();
   if nil != e {
     return value.{{$pk.GoName}}, e
   }
@@ -533,7 +554,7 @@ func (self *{{firstLower .table.ClassName}}Model) CreateIt(db squirrel.BaseRunne
   return value.{{$pk.GoName}}, e
 }
 {{end}}{{else}}
-  result, e := sql.RunWith(db).Exec();
+  result, e := builder.RunWith(db).Exec();
   if nil != e {
     return e
   }
@@ -544,16 +565,17 @@ func (self *{{firstLower .table.ClassName}}Model) CreateIt(db squirrel.BaseRunne
 
 {{$columns := .columns}}
 func (self *{{firstLower .table.ClassName}}Model) UpdateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) (error) {
-  {{$columns := .columns | list_update}}sql := squirrel.Update(self.TableName).{{range $idx, $x := $columns }}
+  {{if .table.HasUpdatedAt}}value.UpdatedAt = time.Now()
+  {{end}}{{$columns := .columns | list_update}}builder := squirrel.Update(self.TableName).{{range $idx, $x := $columns }}
     {{if not $x.IsPrimaryKey}}Set("{{$x.DbName}}", value.{{$x.GoName}}).{{end}}{{end}}
     Where(squirrel.Eq{ {{range $column := .columns}} {{if $column.IsPrimaryKey}}"{{$column.DbName}}": value.{{$column.GoName}}, 
       {{end}}{{end}} })
 
   if isPlaceholderWithDollar(db) {
-    sql = sql.PlaceholderFormat(squirrel.Dollar)
+    builder = builder.PlaceholderFormat(squirrel.Dollar)
   }
 
-  result, e := sql.RunWith(db).Exec();
+  result, e := builder.RunWith(db).Exec();
   if nil != e {
     return e
   }
@@ -619,6 +641,10 @@ var template_sql_null_value = `{{if eq .DbType "bool"}}
       value.{{.GoName}} = {{toNullName .DbName}}.String
     {{else if eq .DbType "text"}}
       value.{{.GoName}} = {{toNullName .DbName}}.String
+    {{else if eq .DbType "json"}}
+      value.{{.GoName}} = {{toNullName .DbName}}.String
+    {{else if eq .DbType "jsonb"}}
+      value.{{.GoName}} = {{toNullName .DbName}}.String
     {{else if eq .DbType "timestamp"}}
       value.{{.GoName}} = {{toNullName .DbName}}.Time
     {{else if eq .DbType "timestamptz"}}
@@ -658,6 +684,8 @@ func ToGoTypeFromDbType(nm string) string {
 		return "net.IP"
 	case "macaddr":
 		return "string"
+	case "json", "jsonb":
+		return "string"
 	default:
 		panic("'" + nm + "' is unsupported")
 	}
@@ -682,6 +710,8 @@ func ToNullTypeFromPostgres(nm string) string {
 	case "cidr":
 		return "sql.NullString"
 	case "macaddr":
+		return "sql.NullString"
+	case "json", "jsonb":
 		return "sql.NullString"
 	default:
 		panic("'" + nm + "' is unsupported")

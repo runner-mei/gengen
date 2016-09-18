@@ -24,13 +24,16 @@ type ViewModel struct {
 	ColumnNames []string
 }
 
-func (self *ViewModel) Count(db QueryRower) (count int64, err error) {
+func (self *ViewModel) Count(db squirrel.QueryRower) (count int64, err error) {
 	selectBuilder := self.Where().Select("count(*)").From(self.TableName)
-	err = selectBuilder.QueryRow().Scan(&count)
+	err = squirrel.QueryRowWith(db, selectBuilder).Scan(&count)
 	return
 }
 
 func (self *ViewModel) Where(exprs ...Expr) squirrel.StatementBuilderType {
+	if len(exprs) == 0 {
+		return squirrel.StatementBuilder
+	}
 	if len(exprs) == 1 {
 		return builder.Append(squirrel.StatementBuilder, "WhereParts", exprs[0]).(squirrel.StatementBuilderType)
 	}
@@ -72,12 +75,6 @@ func (self *ViewModel) DeleteBy(db squirrel.BaseRunner, pred interface{}, args .
 type DbModel struct {
 	ViewModel
 	KeyNames []string
-}
-
-func (self *DbModel) Count(db QueryRower) (count int64, err error) {
-	selectBuilder := self.Where().Select("count(*)").From(self.TableName)
-	err = selectBuilder.QueryRow().Scan(&count)
-	return
 }
 
 func (self *DbModel) UpdateByPrimaryKey(db squirrel.BaseRunner, values map[string]interface{}, keys ...interface{}) error {
