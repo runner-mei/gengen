@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/lann/builder"
@@ -24,13 +26,13 @@ type ViewModel struct {
 	ColumnNames []string
 }
 
-func (self *ViewModel) Count(db squirrel.QueryRower) (count int64, err error) {
-	selectBuilder := self.Where().Select("count(*)").From(self.TableName)
+func (viewModel *ViewModel) Count(db squirrel.QueryRower) (count int64, err error) {
+	selectBuilder := viewModel.Where().Select("count(*)").From(viewModel.TableName)
 	err = squirrel.QueryRowWith(db, selectBuilder).Scan(&count)
 	return
 }
 
-func (self *ViewModel) Where(exprs ...Expr) squirrel.StatementBuilderType {
+func (viewModel *ViewModel) Where(exprs ...Expr) squirrel.StatementBuilderType {
 	if len(exprs) == 0 {
 		return squirrel.StatementBuilder
 	}
@@ -45,8 +47,8 @@ func (self *ViewModel) Where(exprs ...Expr) squirrel.StatementBuilderType {
 	return builder.Append(squirrel.StatementBuilder, "WhereParts", squirrel.And(sqlizers)).(squirrel.StatementBuilderType)
 }
 
-func (self *ViewModel) UpdateBy(db squirrel.BaseRunner, values map[string]interface{}, pred interface{}, args ...interface{}) (int64, error) {
-	sql := squirrel.Update(self.TableName)
+func (viewModel *ViewModel) UpdateBy(db squirrel.BaseRunner, values map[string]interface{}, pred interface{}, args ...interface{}) (int64, error) {
+	sql := squirrel.Update(viewModel.TableName)
 	if isPlaceholderWithDollar(db) {
 		sql = sql.PlaceholderFormat(squirrel.Dollar)
 	}
@@ -64,8 +66,8 @@ func (self *ViewModel) UpdateBy(db squirrel.BaseRunner, values map[string]interf
 	return result.RowsAffected()
 }
 
-func (self *ViewModel) Delete(db squirrel.BaseRunner, exprs ...Expr) (int64, error) {
-	sq := self.Where(exprs...).Delete(self.TableName)
+func (viewModel *ViewModel) Delete(db squirrel.BaseRunner, exprs ...Expr) (int64, error) {
+	sq := viewModel.Where(exprs...).Delete(viewModel.TableName)
 	if isPlaceholderWithDollar(db) {
 		sq = sq.PlaceholderFormat(squirrel.Dollar)
 	}
@@ -76,8 +78,8 @@ func (self *ViewModel) Delete(db squirrel.BaseRunner, exprs ...Expr) (int64, err
 	return result.RowsAffected()
 }
 
-func (self *ViewModel) DeleteBy(db squirrel.BaseRunner, pred interface{}, args ...interface{}) (int64, error) {
-	sq := squirrel.Delete(self.TableName).Where(pred, args)
+func (viewModel *ViewModel) DeleteBy(db squirrel.BaseRunner, pred interface{}, args ...interface{}) (int64, error) {
+	sq := squirrel.Delete(viewModel.TableName).Where(pred, args)
 	if isPlaceholderWithDollar(db) {
 		sq = sq.PlaceholderFormat(squirrel.Dollar)
 	}
@@ -94,8 +96,8 @@ type DbModel struct {
 	KeyNames []string
 }
 
-func (self *DbModel) UpdateByPrimaryKey(db squirrel.BaseRunner, values map[string]interface{}, keys ...interface{}) error {
-	sql := squirrel.Update(self.TableName)
+func (dbModel *DbModel) UpdateByPrimaryKey(db squirrel.BaseRunner, values map[string]interface{}, keys ...interface{}) error {
+	sql := squirrel.Update(dbModel.TableName)
 	if isPlaceholderWithDollar(db) {
 		sql = sql.PlaceholderFormat(squirrel.Dollar)
 	}
@@ -106,7 +108,7 @@ func (self *DbModel) UpdateByPrimaryKey(db squirrel.BaseRunner, values map[strin
 
 	cond := squirrel.Eq{}
 	for idx, key := range keys {
-		cond[self.KeyNames[idx]] = key
+		cond[dbModel.KeyNames[idx]] = key
 	}
 	sql = sql.Where(cond)
 
@@ -126,14 +128,14 @@ func (self *DbModel) UpdateByPrimaryKey(db squirrel.BaseRunner, values map[strin
 	return nil
 }
 
-func (self *DbModel) DeleteByPrimaryKey(db squirrel.BaseRunner, keys ...interface{}) error {
-	sql := squirrel.Delete(self.TableName)
+func (dbModel *DbModel) DeleteByPrimaryKey(db squirrel.BaseRunner, keys ...interface{}) error {
+	sql := squirrel.Delete(dbModel.TableName)
 	if isPlaceholderWithDollar(db) {
 		sql = sql.PlaceholderFormat(squirrel.Dollar)
 	}
 	cond := squirrel.Eq{}
 	for idx, key := range keys {
-		cond[self.KeyNames[idx]] = key
+		cond[dbModel.KeyNames[idx]] = key
 	}
 
 	result, e := sql.Where(cond).RunWith(db).Exec()
@@ -155,16 +157,23 @@ type ColumnModel struct {
 	Name string
 }
 
-func (self *ColumnModel) EQU(value interface{}) Expr {
-	return Expr{Column: self, Operator: "=", Value: value}
+func (model *ColumnModel) EQU(value interface{}) Expr {
+	return Expr{Column: model, Operator: "=", Value: value}
 }
 
-func (self *ColumnModel) NEQ(value interface{}) Expr {
-	return Expr{Column: self, Operator: "<>", Value: value}
+func (model *ColumnModel) IN(values ...interface{}) Expr {
+	if len(values) == 0 {
+		panic(errors.New("values is empty."))
+	}
+	return Expr{Column: model, Operator: "IN", Value: values}
 }
 
-func (self *ColumnModel) EXISTS(value interface{}) Expr {
-	return Expr{Column: self, Operator: "EXISTS", Value: value}
+func (model *ColumnModel) NEQ(value interface{}) Expr {
+	return Expr{Column: model, Operator: "<>", Value: value}
+}
+
+func (model *ColumnModel) EXISTS(value interface{}) Expr {
+	return Expr{Column: model, Operator: "EXISTS", Value: value}
 }
 
 type Expr struct {
@@ -173,15 +182,55 @@ type Expr struct {
 	Value    interface{}
 }
 
-func (self Expr) ToSql() (string, []interface{}, error) {
-	if sqlizer, ok := self.Value.(squirrel.Sqlizer); ok {
+func (model Expr) ToSql() (string, []interface{}, error) {
+	if sqlizer, ok := model.Value.(squirrel.Sqlizer); ok {
 		sub_sqlstr, sub_args, e := sqlizer.ToSql()
 		if nil != e {
 			return "", nil, e
 		}
-		return self.Column.Name + " " + self.Operator + " " + sub_sqlstr, sub_args, nil
+		return model.Column.Name + " " + model.Operator + " " + sub_sqlstr, sub_args, nil
 	}
-	return self.Column.Name + " " + self.Operator + " ? ", []interface{}{self.Value}, nil
+	if "IN" == model.Operator {
+		var buf bytes.Buffer
+		buf.WriteString(model.Column.Name)
+		buf.WriteString(" IN (")
+		JoinObjects(&buf, model.Value)
+		buf.Truncate(buf.Len() - 1)
+		buf.WriteString(") ")
+		return buf.String(), nil, nil
+	}
+	return model.Column.Name + " " + model.Operator + " ? ", []interface{}{model.Value}, nil
+}
+
+func JoinObjects(buf *bytes.Buffer, value interface{}) {
+	if inner, ok := value.([]interface{}); ok {
+		for _, v := range inner {
+			JoinObjects(buf, v)
+		}
+	} else if inner, ok := value.([]uint); ok {
+		for _, v := range inner {
+			buf.WriteString(fmt.Sprint(v))
+			buf.WriteString(",")
+		}
+	} else if inner, ok := value.([]int); ok {
+		for _, v := range inner {
+			buf.WriteString(fmt.Sprint(v))
+			buf.WriteString(",")
+		}
+	} else if inner, ok := value.([]uint64); ok {
+		for _, v := range inner {
+			buf.WriteString(fmt.Sprint(v))
+			buf.WriteString(",")
+		}
+	} else if inner, ok := value.([]int64); ok {
+		for _, v := range inner {
+			buf.WriteString(fmt.Sprint(v))
+			buf.WriteString(",")
+		}
+	} else {
+		buf.WriteString(fmt.Sprint(value))
+		buf.WriteString(",")
+	}
 }
 
 // Sqlizer is the interface that wraps the ToSql method.
