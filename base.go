@@ -65,7 +65,12 @@ func (self *ViewModel) UpdateBy(db squirrel.BaseRunner, values map[string]interf
 }
 
 func (self *ViewModel) DeleteBy(db squirrel.BaseRunner, pred interface{}, args ...interface{}) (int64, error) {
-	result, e := squirrel.Delete(self.TableName).Where(pred, args).RunWith(db).Exec()
+	sq := squirrel.Delete(self.TableName).Where(pred, args)
+	if isPlaceholderWithDollar(db) {
+		sql = sql.PlaceholderFormat(squirrel.Dollar)
+	}
+
+	result, e := sq.RunWith(db).Exec()
 	if nil != e {
 		return 0, e
 	}
