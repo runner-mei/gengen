@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/lann/builder"
@@ -176,6 +177,10 @@ func (model *ColumnModel) EXISTS(value interface{}) Expr {
 	return Expr{Column: model, Operator: "EXISTS", Value: value}
 }
 
+func (self *ColumnModel) LIKE(value string) Expr {
+	return Expr{Column: self, Operator: "LIKE", Value: value}
+}
+
 type Expr struct {
 	Column   *ColumnModel
 	Operator string
@@ -228,8 +233,16 @@ func JoinObjects(buf *bytes.Buffer, value interface{}) {
 			buf.WriteString(",")
 		}
 	} else {
-		buf.WriteString(fmt.Sprint(value))
-		buf.WriteString(",")
+		valVal := reflect.ValueOf(value)
+		if valVal.Kind() == reflect.Array || valVal.Kind() == reflect.Slice {
+			for i := 0; i < valVal.Len(); i++ {
+				buf.WriteString(fmt.Sprint(valVal.Index(i).Interface()))
+				buf.WriteString(",")
+			}
+		} else {
+			buf.WriteString(fmt.Sprint(value))
+			buf.WriteString(",")
+		}
 	}
 }
 
