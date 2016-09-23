@@ -11,7 +11,10 @@ import (
 	"github.com/lann/builder"
 )
 
+// ErrNotUpdated - 表示没有更新任何记录
 var ErrNotUpdated = errors.New("no record is updated")
+
+// ErrNotDeleted - 表示没有删除任何记录
 var ErrNotDeleted = errors.New("no record is deleted")
 
 func isPostgersql(db interface{}) bool {
@@ -22,17 +25,23 @@ func isPlaceholderWithDollar(value interface{}) bool {
 	return true
 }
 
+// ViewModel - 数据库视图模型
 type ViewModel struct {
 	TableName   string
 	ColumnNames []string
 }
 
-func (viewModel *ViewModel) Count(db squirrel.QueryRower) (count int64, err error) {
-	selectBuilder := viewModel.Where().Select("count(*)").From(viewModel.TableName)
+// Count - 统计符合条件的记录数
+func (viewModel *ViewModel) Count(db squirrel.QueryRower, exprs ...Expr) (count int64, err error) {
+	selectBuilder := viewModel.Where(exprs...).Select("count(*)").From(viewModel.TableName)
+	if isPlaceholderWithDollar(db) {
+		selectBuilder = selectBuilder.PlaceholderFormat(squirrel.Dollar)
+	}
 	err = squirrel.QueryRowWith(db, selectBuilder).Scan(&count)
 	return
 }
 
+// Where - 生成查询语句， 如 Where().Select()
 func (viewModel *ViewModel) Where(exprs ...Expr) squirrel.StatementBuilderType {
 	if len(exprs) == 0 {
 		return squirrel.StatementBuilder

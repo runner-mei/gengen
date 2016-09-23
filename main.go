@@ -67,6 +67,10 @@ func init() {
 	// register version as a subcommand
 	command.On("version", "prints the version", &versionCommand{}, nil)
 	command.On("embede", "", &embedeCommand{}, nil)
+	command.On("models", "从数据库的表模型生成 models 代码", &GenerateModelsCommand{}, nil)
+	command.On("controller", "从数据库的表模型生成控制器代码", &GenerateControllerCommand{}, nil)
+	command.On("views", "从数据库的表模型生成 Views 代码", &GenerateViewCommand{}, nil)
+
 }
 
 func main() {
