@@ -117,6 +117,11 @@ func (cmd *GenerateModelsCommand) init() error {
 			}
 			return strings.ToLower(s[:1]) + s[1:]
 		},
+		"isIntegerType": func(s string) bool {
+			s = strings.ToLower(s)
+			return s == "int" || s == "int32" || s == "int64" ||
+				s == "uint" || s == "uint32" || s == "uint64"
+		},
 		//"ToNullValue": ToNullValueFromPostgres,
 	}
 
@@ -329,7 +334,7 @@ func (self *{{firstLower .table.ClassName}}Model) QueryWith(db squirrel.Queryer,
   return results, rows.Err()
 }
 
-func (self *{{firstLower .table.ClassName}}Model) FindById(db squirrel.QueryRower, id int64) (*{{.table.ClassName}}, error){
+func (self *{{firstLower .table.ClassName}}Model) FindByID(db squirrel.QueryRower, id int64) (*{{.table.ClassName}}, error){
   builder := squirrel.Select().From(self.TableName).Where(squirrel.Eq{"id": id})
   return self.QueryRowWith(db, builder)
 }
@@ -352,7 +357,7 @@ func (self *{{firstLower .table.ClassName}}Model) CreateIt(db squirrel.BaseRunne
 
 {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}{{if $pk.IsSequence}}
   if isPostgersql(db) {
-    if e := builder.Suffix("RETURNING \"{{$pk.GoName}}\"").RunWith(db).
+    if e := builder.Suffix("RETURNING \"{{$pk.DbName}}\"").RunWith(db).
         QueryRow().Scan(&value.{{$pk.GoName}}); nil != e {
       return value.{{$pk.GoName}}, e
     }
@@ -393,7 +398,15 @@ func (self *{{firstLower .table.ClassName}}Model) CreateIt(db squirrel.BaseRunne
 
 {{$columns := .columns}}
 func (self *{{firstLower .table.ClassName}}Model) UpdateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) (error) {
-  {{if .table.HasUpdatedAt}}value.UpdatedAt = time.Now()
+  {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}{{if isIntegerType $pk.GoType}}if 0 == value.{{$pk.GoName}} {
+    return ErrPrimaryKeyInvalid
+  }
+
+  {{end}}{{if eq "string" $pk.GoType}}if "" == value.{{$pk.GoName}} {
+    return ErrPrimaryKeyInvalid
+  }
+
+  {{end}}{{end}}{{if .table.HasUpdatedAt}}value.UpdatedAt = time.Now()
   {{end}}{{$columns := .columns | list_update}}builder := squirrel.Update(self.TableName).{{range $idx, $x := $columns }}
     {{if not $x.IsPrimaryKey}}Set("{{$x.DbName}}", value.{{$x.GoName}}).{{end}}{{end}}
     Where(squirrel.Eq{ {{range $column := .columns}} {{if $column.IsPrimaryKey}}"{{$column.DbName}}": value.{{$column.GoName}}, 
@@ -412,29 +425,46 @@ func (self *{{firstLower .table.ClassName}}Model) UpdateIt(db squirrel.BaseRunne
     return e
   }
   if 0 == rowsAffected {
-    return errors.New("update failed")
+    return ErrNotUpdated
   }
   return nil
 }
 
 
-func (self *{{firstLower .table.ClassName}}Model) DeleteIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) error { {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
-  return self.DeleteById(db, value.{{$pk.GoName}}) {{else}}
-  _, e := self.DeleteBy(db, squirrel.Eq{ {{range $column := .columns}} 
+func (self *{{firstLower .table.ClassName}}Model) DeleteIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) error {
+  {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}return self.DeleteByID(db, value.{{$pk.GoName}})
+  {{else}}count, err := self.DeleteBy(db, squirrel.Eq{ {{range $column := .table.PrimaryKey}} 
       "{{$column.DbName}}": value.{{$column.GoName}},
     {{end}} })
-  return e {{end}}
+  if err != nil {
+    return err
+  }
+  if count == 0 {
+    return ErrNotDeleted
+  }
+  return nil {{end}}
 }
-
 
 {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
-func (self *{{firstLower .table.ClassName}}Model) DeleteById(db squirrel.BaseRunner, key {{$pk.GoType}}) error {
-  _, e := self.DeleteBy(db, squirrel.Eq{"{{$pk.DbName}}": key})
-  return e
+func (self *{{firstLower .table.ClassName}}Model) DeleteByID(db squirrel.BaseRunner, key {{$pk.GoType}}) error {
+  {{if isIntegerType $pk.GoType}}if 0 == key {
+    return ErrPrimaryKeyInvalid
+  }
+  {{end}}{{if eq "string" $pk.GoType}}if "" == key {
+    return ErrPrimaryKeyInvalid
+  }
+  {{end}}
+
+  count, err := self.DeleteBy(db, squirrel.Eq{"{{$pk.DbName}}": key})
+  if err != nil {
+    return err
+  }
+  if count == 0 {
+    return ErrNotDeleted
+  }
+  return nil
 }
 {{end}}
-
-
 {{end}} {{/* isView end */}}
 
 var {{.table.ClassName}}Model = {{firstLower .table.ClassName}}Model{

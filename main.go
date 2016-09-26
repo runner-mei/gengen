@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -67,6 +68,7 @@ func init() {
 	// register version as a subcommand
 	command.On("version", "prints the version", &versionCommand{}, nil)
 	command.On("embede", "", &embedeCommand{}, nil)
+	command.On("generate", "从数据库的表模型生成控制器和 views 代码", &generateCommand{}, nil)
 	command.On("models", "从数据库的表模型生成 models 代码", &GenerateModelsCommand{}, nil)
 	command.On("controller", "从数据库的表模型生成控制器代码", &GenerateControllerCommand{}, nil)
 	command.On("views", "从数据库的表模型生成 Views 代码", &GenerateViewCommand{}, nil)
@@ -77,4 +79,51 @@ func main() {
 	flag.Usage = command.Usage
 	command.Parse()
 	command.Run()
+}
+
+type generateCommand struct {
+	dbBase
+	root     string
+	override bool
+}
+
+func (cmd *generateCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
+	cmd.initFlags(fs)
+	flag.StringVar(&cmd.root, "root", "", "the root directory")
+	flag.BoolVar(&cmd.override, "override", false, "")
+	return fs
+}
+
+func (cmd *generateCommand) init() error {
+	if "" == cmd.root {
+		for _, s := range []string{"conf/routes", "../conf/routes", "../../conf/routes", "../../conf/routes"} {
+			if st, e := os.Stat(s); nil == e && nil != st && !st.IsDir() {
+				cmd.root, _ = filepath.Abs(filepath.Join(s, "..", ".."))
+				break
+			}
+		}
+
+		if "" == cmd.root {
+			return errors.New("root directory isn't found")
+		}
+	}
+	return nil
+}
+
+func (cmd *generateCommand) Run(args []string) {
+	if len(args) == 0 {
+		fmt.Println("table name is missing.")
+		return
+	}
+
+	if e := cmd.init(); nil != e {
+		fmt.Println(e)
+		return
+	}
+
+	var controller = GenerateControllerCommand{dbBase: cmd.dbBase, root: cmd.root}
+	var views = GenerateViewCommand{dbBase: cmd.dbBase, root: cmd.root}
+
+	controller.Run(args)
+	views.Run(args)
 }

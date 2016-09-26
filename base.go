@@ -14,6 +14,9 @@ import (
 // ErrNotUpdated - 表示没有更新任何记录
 var ErrNotUpdated = errors.New("no record is updated")
 
+// ErrPrimaryKeyInvalid - 主 key 是无效的。
+var ErrPrimaryKeyInvalid = errors.New("primary key is invalid")
+
 // ErrNotDeleted - 表示没有删除任何记录
 var ErrNotDeleted = errors.New("no record is deleted")
 
