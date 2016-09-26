@@ -13,7 +13,7 @@ import (
 )
 
 // GenerateControllerCommand - 生成控制器
-type GenerateControllerCommand struct {
+type generateBase struct {
 	dbBase
 
 	root     string
@@ -21,14 +21,14 @@ type GenerateControllerCommand struct {
 }
 
 // Flags - 申明参数
-func (cmd *GenerateControllerCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
+func (cmd *generateBase) Flags(fs *flag.FlagSet) *flag.FlagSet {
 	cmd.initFlags(fs)
 	flag.StringVar(&cmd.root, "root", "", "the root directory")
 	flag.BoolVar(&cmd.override, "override", false, "")
 	return fs
 }
 
-func (cmd *GenerateControllerCommand) init() error {
+func (cmd *generateBase) init() error {
 	if "" == cmd.root {
 		for _, s := range []string{"conf/routes", "../conf/routes", "../../conf/routes", "../../conf/routes"} {
 			if st, e := os.Stat(s); nil == e && nil != st && !st.IsDir() {
@@ -42,6 +42,11 @@ func (cmd *GenerateControllerCommand) init() error {
 		}
 	}
 	return nil
+}
+
+// GenerateControllerCommand - 生成控制器
+type GenerateControllerCommand struct {
+	generateBase
 }
 
 // Run - 生成代码

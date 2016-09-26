@@ -1,8 +1,6 @@
 package main
 
 import (
-	"errors"
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -11,36 +9,9 @@ import (
 	"text/template"
 )
 
-// GenerateControllerCommand - 生成控制器
+// GenerateViewCommand - 生成视图
 type GenerateViewCommand struct {
-	dbBase
-
-	root     string
-	override bool
-}
-
-// Flags - 申明参数
-func (cmd *GenerateViewCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
-	cmd.initFlags(fs)
-	flag.StringVar(&cmd.root, "root", "", "the root directory")
-	flag.BoolVar(&cmd.override, "override", false, "")
-	return fs
-}
-
-func (cmd *GenerateViewCommand) init() error {
-	if "" == cmd.root {
-		for _, s := range []string{"conf/routes", "../conf/routes", "../../conf/routes", "../../conf/routes"} {
-			if st, e := os.Stat(s); nil == e && nil != st && !st.IsDir() {
-				cmd.root, _ = filepath.Abs(filepath.Join(s, "..", ".."))
-				break
-			}
-		}
-
-		if "" == cmd.root {
-			return errors.New("root directory isn't found")
-		}
-	}
-	return nil
+	generateBase
 }
 
 // Run - 生成代码
