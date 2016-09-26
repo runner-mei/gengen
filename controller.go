@@ -16,13 +16,15 @@ import (
 type GenerateControllerCommand struct {
 	dbBase
 
-	root string
+	root     string
+	override bool
 }
 
 // Flags - 申明参数
 func (cmd *GenerateControllerCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 	cmd.initFlags(fs)
 	flag.StringVar(&cmd.root, "root", "", "the root directory")
+	flag.BoolVar(&cmd.override, "override", false, "")
 	return fs
 }
 
@@ -72,11 +74,6 @@ func (cmd *GenerateControllerCommand) Run(args []string) {
 			continue
 		}
 
-		if e := cmd.genrateViewsFromTable(&table); nil != e {
-			log.Println(e)
-			return
-		}
-
 		if e := cmd.genrateControllerFromTable(&table); nil != e {
 			log.Println(e)
 			return
@@ -91,24 +88,18 @@ func (cmd *GenerateControllerCommand) genrateControllerFromTable(table *Table) e
 	} else {
 		fmt.Println(err)
 	}
+
 	controllerName := Pluralize(table.ClassName)
 	uname := Underscore(controllerName)
-	f, err := os.OpenFile(filepath.Join(controllerRoot, uname+".go"), os.O_CREATE|os.O_EXCL, 0)
-	if nil != err {
-		return err
-	}
-	defer f.Close()
-
-	return controllerTemplate.Execute(f, map[string]interface{}{
+	params := map[string]interface{}{
 		"table":           table,
+		"columns":         table.Columns,
 		"controllerName":  controllerName,
 		"controllerUName": uname,
 		"dbPrefix":        cmd.dbPrefix,
-	})
-}
+	}
 
-func (cmd *GenerateControllerCommand) genrateViewsFromTable(table *Table) error {
-	return nil
+	return executeTempate(cmd.override, controllerTemplate, params, filepath.Join(controllerRoot, uname+".go"))
 }
 
 var funcs = template.FuncMap{
