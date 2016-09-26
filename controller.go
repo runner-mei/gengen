@@ -205,7 +205,7 @@ func (c {{.controllerName}}) Create({{$varName}} *models.{{.table.ClassName}}) r
 
 // 编辑指定 id 的记录
 func (c {{.controllerName}}) Edit(id int64) revel.Result {
-  {{$varName}}, err := models.{{.table.ClassName}}s.FindById(app.DbRunner, id)
+  {{$varName}}, err := models.{{.table.ClassName}}s.FindByID(app.DbRunner, id)
   if err != nil {
     c.Flash.Error(err.Error())
     c.FlashParams()
