@@ -352,7 +352,7 @@ func (self *{{firstLower .table.ClassName}}Model) CreateIt(db squirrel.BaseRunne
 
 {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}{{if $pk.IsSequence}}
   if isPostgersql(db) {
-    if e := builder.Suffix("RETURNING \"{{$pk.GoName}}\"").RunWith(db).
+    if e := builder.Suffix("RETURNING \"{{$pk.DbName}}\"").RunWith(db).
         QueryRow().Scan(&value.{{$pk.GoName}}); nil != e {
       return value.{{$pk.GoName}}, e
     }
