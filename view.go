@@ -1,8 +1,6 @@
 package main
 
 import (
-	"errors"
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -11,34 +9,9 @@ import (
 	"text/template"
 )
 
-// GenerateControllerCommand - 生成控制器
+// GenerateViewCommand - 生成视图
 type GenerateViewCommand struct {
-	dbBase
-
-	root string
-}
-
-// Flags - 申明参数
-func (cmd *GenerateViewCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
-	cmd.initFlags(fs)
-	flag.StringVar(&cmd.root, "root", "", "the root directory")
-	return fs
-}
-
-func (cmd *GenerateViewCommand) init() error {
-	if "" == cmd.root {
-		for _, s := range []string{"conf/routes", "../conf/routes", "../../conf/routes", "../../conf/routes"} {
-			if st, e := os.Stat(s); nil == e && nil != st && !st.IsDir() {
-				cmd.root, _ = filepath.Abs(filepath.Join(s, "..", ".."))
-				break
-			}
-		}
-
-		if "" == cmd.root {
-			return errors.New("root directory isn't found")
-		}
-	}
-	return nil
+	generateBase
 }
 
 // Run - 生成代码
@@ -94,25 +67,25 @@ func (cmd *GenerateViewCommand) genrateViewsFromTable(table *Table) error {
 		"controllerUName": uname,
 		"dbPrefix":        cmd.dbPrefix,
 	}
-	err := executeTempate(indexTemplate, params, filepath.Join(viewRoot, "index.html"))
+	err := executeTempate(cmd.override, indexTemplate, params, filepath.Join(viewRoot, "index.html"))
 	if err != nil {
 		return err
 	}
 
-	err = executeTempate(editTemplate, params, filepath.Join(viewRoot, "edit.html"))
+	err = executeTempate(cmd.override, editTemplate, params, filepath.Join(viewRoot, "edit.html"))
 	if err != nil {
 		os.Remove(filepath.Join(viewRoot, "index.html"))
 		return err
 	}
 
-	err = executeTempate(editTemplate, params, filepath.Join(viewRoot, "edit_fields.html"))
+	err = executeTempate(cmd.override, fieldsTemplate, params, filepath.Join(viewRoot, "edit_fields.html"))
 	if err != nil {
 		os.Remove(filepath.Join(viewRoot, "index.html"))
 		os.Remove(filepath.Join(viewRoot, "edit.html"))
 		return err
 	}
 
-	err = executeTempate(newTemplate, params, filepath.Join(viewRoot, "new.html"))
+	err = executeTempate(cmd.override, newTemplate, params, filepath.Join(viewRoot, "new.html"))
 	if err != nil {
 		os.Remove(filepath.Join(viewRoot, "index.html"))
 		os.Remove(filepath.Join(viewRoot, "edit.html"))
@@ -120,7 +93,7 @@ func (cmd *GenerateViewCommand) genrateViewsFromTable(table *Table) error {
 		return err
 	}
 
-	err = executeTempate(quickTemplate, params, filepath.Join(viewRoot, "quick-bar.html"))
+	err = executeTempate(cmd.override, quickTemplate, params, filepath.Join(viewRoot, "quick-bar.html"))
 	if err != nil {
 		os.Remove(filepath.Join(viewRoot, "index.html"))
 		os.Remove(filepath.Join(viewRoot, "edit.html"))
@@ -131,8 +104,15 @@ func (cmd *GenerateViewCommand) genrateViewsFromTable(table *Table) error {
 	return nil
 }
 
-func executeTempate(tpl *template.Template, params interface{}, fname string) error {
-	out, err := os.OpenFile(fname, os.O_CREATE|os.O_EXCL, 0)
+func executeTempate(override bool, tpl *template.Template, params interface{}, fname string) error {
+	var out *os.File
+	var err error
+
+	if !override {
+		out, err = os.OpenFile(fname, os.O_CREATE|os.O_EXCL, 0)
+	} else {
+		out, err = os.OpenFile(fname, os.O_CREATE|os.O_TRUNC, 0)
+	}
 	if nil != err {
 		return err
 	}
@@ -181,7 +161,7 @@ var indexText = `[[$tableNoPrefix := TrimPrefix .table.TableName .dbPrefix]][[$v
 var fieldsTemplate = template.Must(template.New("default").Delims("[[", "]]").Funcs(funcs).Parse(fieldsText))
 
 var fieldsText = `[[$tableNoPrefix := TrimPrefix .table.TableName .dbPrefix]][[$varName := Singularize $tableNoPrefix]]
-                   [[range $column := .columns]]{{text_field . "[[$varName]].[[$column.GoName]]" "[[$column.GoName]]:" | f_addClass "span5" | render}}
+                  [[range $column := .columns]]{{text_field . "[[$varName]].[[$column.GoName]]" "[[$column.GoName]]:" | f_addClass "span5" | render}}
                   [[end]]`
 
 var editTemplate = template.Must(template.New("default").Delims("[[", "]]").Funcs(funcs).Parse(editText))

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -82,32 +81,7 @@ func main() {
 }
 
 type generateCommand struct {
-	dbBase
-	root     string
-	override bool
-}
-
-func (cmd *generateCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
-	cmd.initFlags(fs)
-	flag.StringVar(&cmd.root, "root", "", "the root directory")
-	flag.BoolVar(&cmd.override, "override", false, "")
-	return fs
-}
-
-func (cmd *generateCommand) init() error {
-	if "" == cmd.root {
-		for _, s := range []string{"conf/routes", "../conf/routes", "../../conf/routes", "../../conf/routes"} {
-			if st, e := os.Stat(s); nil == e && nil != st && !st.IsDir() {
-				cmd.root, _ = filepath.Abs(filepath.Join(s, "..", ".."))
-				break
-			}
-		}
-
-		if "" == cmd.root {
-			return errors.New("root directory isn't found")
-		}
-	}
-	return nil
+	generateBase
 }
 
 func (cmd *generateCommand) Run(args []string) {
@@ -121,8 +95,8 @@ func (cmd *generateCommand) Run(args []string) {
 		return
 	}
 
-	var controller = GenerateControllerCommand{dbBase: cmd.dbBase, root: cmd.root}
-	var views = GenerateViewCommand{dbBase: cmd.dbBase, root: cmd.root}
+	var controller = GenerateControllerCommand{generateBase: generateBase}
+	var views = GenerateViewCommand{generateBase: generateBase}
 
 	controller.Run(args)
 	views.Run(args)
