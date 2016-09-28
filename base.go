@@ -176,7 +176,15 @@ func (model *ColumnModel) EQU(value interface{}) Expr {
 
 func (model *ColumnModel) IN(values ...interface{}) Expr {
 	if len(values) == 0 {
-		panic(errors.New("values is empty."))
+		panic(errors.New("values is empty"))
+	}
+
+	if len(values) == 1 {
+		if valVal.Kind() == reflect.Array || valVal.Kind() == reflect.Slice {
+			if valVal.Len() == 0 {
+				panic(errors.New("values is empty"))
+			}
+		}
 	}
 	return Expr{Column: model, Operator: "IN", Value: values}
 }
@@ -211,7 +219,11 @@ func (model Expr) ToSql() (string, []interface{}, error) {
 		var buf bytes.Buffer
 		buf.WriteString(model.Column.Name)
 		buf.WriteString(" IN (")
+		oldLength := buf.Len()
 		JoinObjects(&buf, model.Value)
+		if oldLength == buf.Len() {
+			return "", nil, errors.New("ToSql: values is empty in the 'IN' case.")
+		}
 		buf.Truncate(buf.Len() - 1)
 		buf.WriteString(") ")
 		return buf.String(), nil, nil
