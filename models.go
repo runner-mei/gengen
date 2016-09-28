@@ -409,8 +409,8 @@ func (self *{{firstLower .table.ClassName}}Model) UpdateIt(db squirrel.BaseRunne
   {{end}}{{end}}{{if .table.HasUpdatedAt}}value.UpdatedAt = time.Now()
   {{end}}{{$columns := .columns | list_update}}builder := squirrel.Update(self.TableName).{{range $idx, $x := $columns }}
     {{if not $x.IsPrimaryKey}}Set("{{$x.DbName}}", value.{{$x.GoName}}).{{end}}{{end}}
-    Where(squirrel.Eq{ {{range $column := .columns}} {{if $column.IsPrimaryKey}}"{{$column.DbName}}": value.{{$column.GoName}}, 
-      {{end}}{{end}} })
+    Where({{range $idx, $column := .table.PrimaryKey}}squirrel.Eq{"{{$column.DbName}}": value.{{$column.GoName}} }{{if last $columns $idx | not}},
+      {{end}}{{end}})
 
   if isPlaceholderWithDollar(db) {
     builder = builder.PlaceholderFormat(squirrel.Dollar)
@@ -433,9 +433,8 @@ func (self *{{firstLower .table.ClassName}}Model) UpdateIt(db squirrel.BaseRunne
 
 func (self *{{firstLower .table.ClassName}}Model) DeleteIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) error {
   {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}return self.DeleteByID(db, value.{{$pk.GoName}})
-  {{else}}count, err := self.DeleteBy(db, squirrel.Eq{ {{range $column := .table.PrimaryKey}} 
-      "{{$column.DbName}}": value.{{$column.GoName}},
-    {{end}} })
+  {{else}}count, err := self.DeleteBy(db, {{range $idx, $column := .table.PrimaryKey}}squirrel.Eq{"{{$column.DbName}}": value.{{$column.GoName}} }{{if last $columns $idx | not}},
+      {{end}}{{end}})
   if err != nil {
     return err
   }
