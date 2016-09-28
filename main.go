@@ -95,8 +95,8 @@ func (cmd *generateCommand) Run(args []string) {
 		return
 	}
 
-	var controller = GenerateControllerCommand{generateBase: generateBase}
-	var views = GenerateViewCommand{generateBase: generateBase}
+	var controller = GenerateControllerCommand{generateBase: cmd.generateBase}
+	var views = GenerateViewCommand{generateBase: cmd.generateBase}
 
 	controller.Run(args)
 	views.Run(args)

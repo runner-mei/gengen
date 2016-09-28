@@ -15,25 +15,6 @@ import (
 )
 
 // GenerateModelsCommand - 生成数据库模型代码
-type generateCommand struct {
-	dbBase
-	ns   string
-	file string
-
-	root           string
-	templateHeader *template.Template
-	templateModel  *template.Template
-}
-
-// Flags - 申明参数
-func (cmd *generateCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
-	cmd.initFlags(fs)
-	flag.StringVar(&cmd.ns, "namespace", "models", "the namespace name")
-	flag.StringVar(&cmd.file, "file", "models.go", "the output target")
-	return fs
-}
-
-// GenerateModelsCommand - 生成数据库模型代码
 type GenerateModelsCommand struct {
 	dbBase
 	ns   string
