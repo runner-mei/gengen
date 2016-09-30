@@ -180,8 +180,9 @@ func (model *ColumnModel) IN(values ...interface{}) Expr {
 	}
 
 	if len(values) == 1 {
-		if valVal.Kind() == reflect.Array || valVal.Kind() == reflect.Slice {
-			if valVal.Len() == 0 {
+		val := reflect.ValueOf(values[0])
+		if val.Kind() == reflect.Array || val.Kind() == reflect.Slice {
+			if val.Len() == 0 {
 				panic(errors.New("values is empty"))
 			}
 		}

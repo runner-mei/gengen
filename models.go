@@ -111,6 +111,9 @@ func (cmd *GenerateModelsCommand) init() error {
 		"Typeify":     Typeify,
 		"ToUpper":     strings.ToUpper,
 		"ToNullType":  ToNullTypeFromPostgres,
+		"notSQLSupport": func(typ string) bool {
+			return "net.IP" == typ
+		},
 		"firstLower": func(s string) string {
 			if "" == s {
 				return s
@@ -348,7 +351,7 @@ func (self *{{firstLower .table.ClassName}}Model) CreateIt(db squirrel.BaseRunne
     {{if .table.HasCreatedAt}}value.CreatedAt = time.Now()
     {{end}}{{if .table.HasUpdatedAt}}value.UpdatedAt = time.Now()
     {{end}}{{$columns := .columns | list_create}}builder := squirrel.Insert(self.TableName).Columns({{list_join $columns}}).
-    Values({{range $idx, $x := $columns }}value.{{$x.GoName}}{{if last $columns $idx | not}},
+    Values({{range $idx, $x := $columns }}value.{{$x.GoName}}{{if notSQLSupport $x.GoType}}.String(){{end}}{{if last $columns $idx | not}},
     {{end}}{{end}})
 
   if isPlaceholderWithDollar(db) {
@@ -408,7 +411,7 @@ func (self *{{firstLower .table.ClassName}}Model) UpdateIt(db squirrel.BaseRunne
 
   {{end}}{{end}}{{if .table.HasUpdatedAt}}value.UpdatedAt = time.Now()
   {{end}}{{$columns := .columns | list_update}}builder := squirrel.Update(self.TableName).{{range $idx, $x := $columns }}
-    {{if not $x.IsPrimaryKey}}Set("{{$x.DbName}}", value.{{$x.GoName}}).{{end}}{{end}}
+    {{if not $x.IsPrimaryKey}}Set("{{$x.DbName}}", value.{{$x.GoName}}{{if notSQLSupport $x.GoType}}.String(){{end}}).{{end}}{{end}}
     Where({{range $idx, $column := .table.PrimaryKey}}squirrel.Eq{"{{$column.DbName}}": value.{{$column.GoName}} }{{if last $columns $idx | not}},
       {{end}}{{end}})
 
