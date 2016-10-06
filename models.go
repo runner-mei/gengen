@@ -326,6 +326,8 @@ func (self *{{firstLower .table.ClassName}}Model) QueryWith(db squirrel.Queryer,
   if nil != e {
     return nil, e
   }
+  defer rows.Close()
+  
   results := make([]*{{.table.ClassName}}, 0, 4)
   for rows.Next() {
     v, e := self.scan(rows)

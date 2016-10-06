@@ -170,6 +170,14 @@ type ColumnModel struct {
 	Name string
 }
 
+func (model *ColumnModel) IsNULL() Expr {
+	return Expr{Column: model, Operator: "IS", Value: "NULL"}
+}
+
+func (model *ColumnModel) IsNotNULL() Expr {
+	return Expr{Column: model, Operator: "IS", Value: "NOT NULL"}
+}
+
 func (model *ColumnModel) EQU(value interface{}) Expr {
 	return Expr{Column: model, Operator: "=", Value: value}
 }
@@ -215,6 +223,9 @@ func (model Expr) ToSql() (string, []interface{}, error) {
 			return "", nil, e
 		}
 		return model.Column.Name + " " + model.Operator + " " + sub_sqlstr, sub_args, nil
+	}
+	if "IS" == model.Operator {
+		return model.Column.Name + " IS " + fmt.Sprint(model.Value), nil, nil
 	}
 	if "IN" == model.Operator {
 		var buf bytes.Buffer
