@@ -10,6 +10,25 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// select constraint_column_usage.table_catalog as ftable_catalog,
+//        constraint_column_usage.table_schema as ftable_schema,
+//        constraint_column_usage.table_name  as ftable_name,
+//        constraint_column_usage.column_name  as fcolumn_name,
+//        constraint_column_usage.constraint_name
+//   from information_schema.constraint_column_usage, information_schema.referential_constraints
+//   where constraint_column_usage.constraint_catalog = referential_constraints.constraint_catalog and
+//         constraint_column_usage.constraint_schema = referential_constraints.constraint_schema and
+//         constraint_column_usage.constraint_name = referential_constraints.constraint_name;
+
+// select *
+//   from information_schema.key_column_usage, information_schema.referential_constraints
+//   where key_column_usage.constraint_catalog = referential_constraints.constraint_catalog and
+//         key_column_usage.constraint_schema = referential_constraints.constraint_schema and
+//         key_column_usage.constraint_name = referential_constraints.constraint_name and
+//         key_column_usage.table_catalog = 'tpt_models_test' and
+//         key_column_usage.table_schema = 'public' and
+//         key_column_usage.table_name = 'tpt_tree_nodes';
+
 // Table entity in table `information_schema.tables`
 type Table struct {
 	Schema        string
@@ -32,6 +51,7 @@ type Column struct {
 
 	IsNullable   bool
 	IsPrimaryKey bool
+	IsForeignKey bool
 	IsSequence   bool
 }
 
@@ -116,6 +136,30 @@ func (cmd *dbBase) GetAllTables() ([]Table, error) {
 	return tables, rows.Err()
 }
 
+func (cmd *dbBase) isForeignKey(db *sql.DB, tableSchema, tableName, columnName string) (bool, error) {
+	queryString := fmt.Sprintf(`SELECT count(*)
+    FROM
+        INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+      LEFT JOIN
+        INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+      ON
+        kcu.table_schema = tc.table_schema
+        AND kcu.table_name = tc.table_name
+        AND kcu.constraint_name = tc.constraint_name
+    WHERE 
+        tc.constraint_type = 'FOREIGN KEY'
+        AND kcu.table_schema = '%s'
+        AND kcu.table_name = '%s' 
+        AND kcu.column_name = '%s'`, tableSchema, tableName, columnName)
+
+	var count int
+	e := db.QueryRow(queryString).Scan(&count)
+	if nil != e {
+		return false, e
+	}
+	return count > 0, nil
+}
+
 // getByTable use to select columns from `information_schema.tables` of inputed tableName.
 func (cmd *dbBase) getByTable(db *sql.DB, tableSchema, tableName string) ([]Column, error) {
 	queryString := fmt.Sprintf(`SELECT
@@ -125,7 +169,7 @@ func (cmd *dbBase) getByTable(db *sql.DB, tableSchema, tableName string) ([]Colu
         t.column_name = kcu.column_name as primary_key,
         t.column_default IS NOT NULL AND t.column_default LIKE 'nextval%%' as is_sequence
     FROM
-        information_schema.columns t
+        INFORMATION_SCHEMA.COLUMNS t
     LEFT JOIN
         INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
     ON
@@ -165,12 +209,17 @@ func (cmd *dbBase) getByTable(db *sql.DB, tableSchema, tableName string) ([]Colu
 		if primaryKey.Valid {
 			column.IsPrimaryKey = primaryKey.Bool
 		}
+		if isForeignKey, e := cmd.isForeignKey(db, tableSchema, tableName, column.DbName); e == nil {
+			column.IsForeignKey = isForeignKey
+		}
 		if isSequence.Valid {
 			column.IsSequence = isSequence.Bool
 		}
 
 		column.GoName = CamelCase(column.DbName)
 		if "id" == column.DbName && "int4" == column.DbType {
+			column.GoType = "int64"
+		} else if column.IsForeignKey {
 			column.GoType = "int64"
 		} else {
 			column.GoType = ToGoTypeFromDbType(column.DbType)

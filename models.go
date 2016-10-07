@@ -46,6 +46,24 @@ func (cmd *GenerateModelsCommand) init() error {
 			values[name] = value
 			return ""
 		},
+		"columns_remove_foreign_keys": func(columns []Column) interface{} {
+			filterdColumns := make([]Column, 0, len(columns))
+			for _, column := range columns {
+				if !column.IsForeignKey {
+					filterdColumns = append(filterdColumns, column)
+				}
+			}
+			return filterdColumns
+		},
+		"columns_count_foreign_keys": func(columns []Column) interface{} {
+			count := 0
+			for _, column := range columns {
+				if column.IsForeignKey {
+					count++
+				}
+			}
+			return count
+		},
 		"list_create": func(columns []Column) interface{} {
 			filterdColumns := make([]Column, 0, len(columns))
 			for _, column := range columns {
@@ -345,22 +363,55 @@ func (self *{{firstLower .table.ClassName}}Model) FindByID(db squirrel.QueryRowe
 }
 
 {{if not .table.IsView }}
-
-
+{{$oldValues := .}}
 {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
 func (self *{{firstLower .table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) ({{$pk.GoType}}, error){ {{else}}
 func (self *{{firstLower .table.ClassName}}Model) CreateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) error { {{end}}
     {{if .table.HasCreatedAt}}value.CreatedAt = time.Now()
     {{end}}{{if .table.HasUpdatedAt}}value.UpdatedAt = time.Now()
-    {{end}}{{$columns := .columns | list_create}}builder := squirrel.Insert(self.TableName).Columns({{list_join $columns}}).
+    {{end}}{{$columns := .columns | list_create}}{{$fkeyCount := columns_count_foreign_keys $columns}}{{if eq $fkeyCount 0 }}builder := squirrel.Insert(self.TableName).Columns({{list_join $columns}}).
     Values({{range $idx, $x := $columns }}value.{{$x.GoName}}{{if notSQLSupport $x.GoType}}.String(){{end}}{{if last $columns $idx | not}},
     {{end}}{{end}})
+  {{else if eq $fkeyCount 1}}{{range $idx, $x := $columns }}{{if $x.IsForeignKey}}{{set $oldValues "foreignKey" $x}}{{end}}{{end}}var builder squirrel.InsertBuilder
 
+  if value.{{.foreignKey.GoName}} <= 0 {
+    builder = squirrel.Insert(self.TableName).Columns({{columns_remove_foreign_keys $columns | list_join}}).
+      Values({{range $idx, $x := columns_remove_foreign_keys $columns }}value.{{$x.GoName}}{{if notSQLSupport $x.GoType}}.String(){{end}}{{if last $columns $idx | not}},
+      {{end}}{{end}})
+  } else {
+    builder = squirrel.Insert(self.TableName).Columns({{list_join $columns}}).
+      Values({{range $idx, $x := $columns }}value.{{$x.GoName}}{{if notSQLSupport $x.GoType}}.String(){{end}}{{if last $columns $idx | not}},
+      {{end}}{{end}})
+  }
+  {{else}}
+  columnNames := []string{ {{columns_remove_foreign_keys $columns | list_join}} }
+  columnValues := []interface{}{ {{range $idx, $x := columns_remove_foreign_keys $columns }}value.{{$x.GoName}}{{if notSQLSupport $x.GoType}}.String(){{end}}{{if last $columns $idx | not}},
+      {{end}}{{end}}}
+
+  {{range $idx, $x := $columns }}{{if $x.IsForeignKey}}if value.{{$x.GoName}} > 0 {
+    columnNames = append(columnNames, "{{$x.DbName}}")
+    columnValues = append(columnValues, value.{{$x.GoName}})
+  }
+  {{end}}{{end}}
+
+  var  builder = squirrel.Insert(self.TableName).Columns(columnNames...).
+      Values(columnValues...)
+  {{end}} {{/*  if eq $fkeyCount 1 */}}
   if isPlaceholderWithDollar(db) {
     builder = builder.PlaceholderFormat(squirrel.Dollar)
   }
 
-{{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}{{if $pk.IsSequence}}
+{{if .table.IsCombinedKey}}
+  result, e := builder.RunWith(db).Exec();
+  if nil != e {
+    return e
+  }
+  _, e = result.RowsAffected()
+  return e
+}
+{{else}}
+{{$pk := index .table.PrimaryKey 0}}
+{{if $pk.IsSequence}}
   if isPostgersql(db) {
     if e := builder.Suffix("RETURNING \"{{$pk.DbName}}\"").RunWith(db).
         QueryRow().Scan(&value.{{$pk.GoName}}); nil != e {
@@ -391,14 +442,7 @@ func (self *{{firstLower .table.ClassName}}Model) CreateIt(db squirrel.BaseRunne
   _, e = result.RowsAffected()
   return value.{{$pk.GoName}}, e
 }
-{{end}}{{else}}
-  result, e := builder.RunWith(db).Exec();
-  if nil != e {
-    return e
-  }
-  _, e = result.RowsAffected()
-  return e
-}
+{{end}} {{/* IsSequence end */}}
 {{end}}
 
 {{$columns := .columns}}
@@ -412,10 +456,16 @@ func (self *{{firstLower .table.ClassName}}Model) UpdateIt(db squirrel.BaseRunne
   }
 
   {{end}}{{end}}{{if .table.HasUpdatedAt}}value.UpdatedAt = time.Now()
-  {{end}}{{$columns := .columns | list_update}}builder := squirrel.Update(self.TableName).{{range $idx, $x := $columns }}
-    {{if not $x.IsPrimaryKey}}Set("{{$x.DbName}}", value.{{$x.GoName}}{{if notSQLSupport $x.GoType}}.String(){{end}}).{{end}}{{end}}
+  {{end}}{{$columns := .columns | list_update}}builder := squirrel.Update(self.TableName).
+    {{range $idx, $x := $columns }}{{if not $x.IsForeignKey}}{{if not $x.IsPrimaryKey}}Set("{{$x.DbName}}", value.{{$x.GoName}}{{if notSQLSupport $x.GoType}}.String(){{end}}).
+    {{end}}{{end}}{{end}}
     Where({{range $idx, $column := .table.PrimaryKey}}squirrel.Eq{"{{$column.DbName}}": value.{{$column.GoName}} }{{if last $columns $idx | not}},
       {{end}}{{end}})
+
+  {{range $idx, $x := $columns }}{{if $x.IsForeignKey}}if value.{{$x.GoName}} > 0 {
+    builder.Set("{{$x.GoName}}", value.{{$x.GoName}})
+  }
+  {{end}}{{end}}
 
   if isPlaceholderWithDollar(db) {
     builder = builder.PlaceholderFormat(squirrel.Dollar)
