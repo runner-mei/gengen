@@ -357,10 +357,19 @@ func (self *{{firstLower .table.ClassName}}Model) QueryWith(db squirrel.Queryer,
   return results, rows.Err()
 }
 
+{{if not .table.IsCombinedKey}}
 func (self *{{firstLower .table.ClassName}}Model) FindByID(db squirrel.QueryRower, id int64) (*{{.table.ClassName}}, error){
   builder := squirrel.Select().From(self.TableName).Where(squirrel.Eq{"id": id})
   return self.QueryRowWith(db, builder)
 }
+{{else if not .table.IsView}}
+func (self *{{firstLower .table.ClassName}}Model) FindByKey(db squirrel.QueryRower, {{range $idx, $column := .table.PrimaryKey}}{{firstLower $column.GoName}} {{$column.GoType}}{{if last $columns $idx | not}},
+      {{end}}{{end}}) (*{{.table.ClassName}}, error){
+  builder := squirrel.Select().From(self.TableName).Where({{range $idx, $column := .table.PrimaryKey}}squirrel.Eq{"{{$column.DbName}}": {{firstLower $column.GoName}} }{{if last $columns $idx | not}},
+      {{end}}{{end}})
+  return self.QueryRowWith(db, builder)
+}
+{{end}}
 
 {{if not .table.IsView }}
 {{$oldValues := .}}

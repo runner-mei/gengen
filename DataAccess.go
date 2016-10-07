@@ -56,15 +56,17 @@ type Column struct {
 }
 
 type dbBase struct {
-	dbDrv    string
-	dbURL    string
-	dbSchema string
-	dbPrefix string
+	dbDrv     string
+	dbURL     string
+	dbCatalog string
+	dbSchema  string
+	dbPrefix  string
 }
 
 func (cmd *dbBase) initFlags(fs *flag.FlagSet) *flag.FlagSet {
 	flag.StringVar(&cmd.dbURL, "db_url", "host=127.0.0.1 port=35432 dbname=tpt user=tpt password=extreme sslmode=disable", "the db url")
 	flag.StringVar(&cmd.dbDrv, "db_drv", "postgres", "the db driver")
+	flag.StringVar(&cmd.dbCatalog, "db_catalog", "tpt", "the db schema")
 	flag.StringVar(&cmd.dbSchema, "db_schema", "public", "the db schema")
 	flag.StringVar(&cmd.dbPrefix, "db_prefix", "tpt_", "the db prefix name")
 	return fs
@@ -79,7 +81,7 @@ func (cmd *dbBase) GetAllTables() ([]Table, error) {
 	defer db.Close()
 
 	queryString := fmt.Sprintf(`SELECT
-            t.table_schema, t.table_name, t.table_type
+            distinct t.table_name, t.table_schema, t.table_type
         FROM
             information_schema.tables t
         LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
@@ -93,7 +95,8 @@ func (cmd *dbBase) GetAllTables() ([]Table, error) {
              AND kcu.table_name = tc.table_name
              AND kcu.constraint_name = tc.constraint_name
         WHERE
-            t.table_schema = '%s'`, cmd.dbSchema)
+            t.table_catalog = '%s' AND
+            t.table_schema = '%s'`, cmd.dbCatalog, cmd.dbSchema)
 
 	rows, e := db.Query(queryString)
 	if nil != e {
@@ -105,7 +108,7 @@ func (cmd *dbBase) GetAllTables() ([]Table, error) {
 	for rows.Next() {
 		var table Table
 		var tableType string
-		if e := rows.Scan(&table.Schema, &table.TableName, &tableType); nil != e {
+		if e := rows.Scan(&table.TableName, &table.Schema, &tableType); nil != e {
 			return nil, e
 		}
 
@@ -113,7 +116,7 @@ func (cmd *dbBase) GetAllTables() ([]Table, error) {
 			table.IsView = true
 		}
 
-		columns, e := cmd.getByTable(db, cmd.dbSchema, table.TableName)
+		columns, e := cmd.getByTable(db, cmd.dbCatalog, cmd.dbSchema, table.TableName)
 		if nil != e {
 			return nil, errors.New("failed to read columns for " + table.TableName + " - " + e.Error())
 		}
@@ -136,7 +139,7 @@ func (cmd *dbBase) GetAllTables() ([]Table, error) {
 	return tables, rows.Err()
 }
 
-func (cmd *dbBase) isForeignKey(db *sql.DB, tableSchema, tableName, columnName string) (bool, error) {
+func (cmd *dbBase) isForeignKey(db *sql.DB, tableCatalog, tableSchema, tableName, columnName string) (bool, error) {
 	queryString := fmt.Sprintf(`SELECT count(*)
     FROM
         INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
@@ -148,9 +151,10 @@ func (cmd *dbBase) isForeignKey(db *sql.DB, tableSchema, tableName, columnName s
         AND kcu.constraint_name = tc.constraint_name
     WHERE 
         tc.constraint_type = 'FOREIGN KEY'
+        AND kcu.table_catalog = '%s'
         AND kcu.table_schema = '%s'
         AND kcu.table_name = '%s' 
-        AND kcu.column_name = '%s'`, tableSchema, tableName, columnName)
+        AND kcu.column_name = '%s'`, tableCatalog, tableSchema, tableName, columnName)
 
 	var count int
 	e := db.QueryRow(queryString).Scan(&count)
@@ -161,9 +165,9 @@ func (cmd *dbBase) isForeignKey(db *sql.DB, tableSchema, tableName, columnName s
 }
 
 // getByTable use to select columns from `information_schema.tables` of inputed tableName.
-func (cmd *dbBase) getByTable(db *sql.DB, tableSchema, tableName string) ([]Column, error) {
+func (cmd *dbBase) getByTable(db *sql.DB, tableCatalog, tableSchema, tableName string) ([]Column, error) {
 	queryString := fmt.Sprintf(`SELECT
-        t.column_name,
+        distinct t.column_name,
         t.is_nullable,
         t.udt_name,
         t.column_name = kcu.column_name as primary_key,
@@ -182,7 +186,7 @@ func (cmd *dbBase) getByTable(db *sql.DB, tableSchema, tableName string) ([]Colu
         kcu.table_schema = tc.table_schema
         AND kcu.table_name = tc.table_name
         AND kcu.constraint_name = tc.constraint_name
-    WHERE t.table_schema = '%s' and t.table_name = '%s'`, tableSchema, tableName)
+    WHERE t.table_catalog = '%s' and t.table_schema = '%s' and t.table_name = '%s'`, tableCatalog, tableSchema, tableName)
 	rows, e := db.Query(queryString)
 	if nil != e {
 		return nil, e
@@ -203,17 +207,33 @@ func (cmd *dbBase) getByTable(db *sql.DB, tableSchema, tableName string) ([]Colu
 			&isSequence); nil != e {
 			return nil, e
 		}
+
 		if isNullable.Valid {
 			column.IsNullable = strings.ToLower(isNullable.String) == "yes"
 		}
 		if primaryKey.Valid {
 			column.IsPrimaryKey = primaryKey.Bool
 		}
-		if isForeignKey, e := cmd.isForeignKey(db, tableSchema, tableName, column.DbName); e == nil {
+		if isForeignKey, e := cmd.isForeignKey(db, tableCatalog, tableSchema, tableName, column.DbName); e == nil {
 			column.IsForeignKey = isForeignKey
 		}
 		if isSequence.Valid {
 			column.IsSequence = isSequence.Bool
+		}
+
+		found := false
+		for idx, col := range columns {
+			if col.DbName == column.DbName {
+				found = true
+
+				if column.IsPrimaryKey {
+					columns[idx].IsPrimaryKey = true
+				}
+				break
+			}
+		}
+		if found {
+			continue
 		}
 
 		column.GoName = CamelCase(column.DbName)
