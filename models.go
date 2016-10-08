@@ -392,7 +392,7 @@ func (self *{{firstLower .table.ClassName}}Model) CreateIt(db squirrel.BaseRunne
       Values({{range $idx, $x := $columns }}value.{{$x.GoName}}{{if notSQLSupport $x.GoType}}.String(){{end}}{{if last $columns $idx | not}},
       {{end}}{{end}})
   }
-  {{else}}
+  {{else}} {{/*  if eq $fkeyCount 1 */}}
   columnNames := []string{ {{columns_remove_foreign_keys $columns | list_join}} }
   columnValues := []interface{}{ {{range $idx, $x := columns_remove_foreign_keys $columns }}value.{{$x.GoName}}{{if notSQLSupport $x.GoType}}.String(){{end}}{{if last $columns $idx | not}},
       {{end}}{{end}}}
@@ -424,7 +424,7 @@ func (self *{{firstLower .table.ClassName}}Model) CreateIt(db squirrel.BaseRunne
   if isPostgersql(db) {
     if e := builder.Suffix("RETURNING \"{{$pk.DbName}}\"").RunWith(db).
         QueryRow().Scan(&value.{{$pk.GoName}}); nil != e {
-      return value.{{$pk.GoName}}, e
+      return 0, e
     }
 
     return value.{{$pk.GoName}}, nil
@@ -437,17 +437,17 @@ func (self *{{firstLower .table.ClassName}}Model) CreateIt(db squirrel.BaseRunne
   {{if eq $pk.GoType "int64"}}value.{{$pk.GoName}}, e = result.LastInsertId()
   {{else}}pk, e := result.LastInsertId()
   if nil != e {
-    return value.{{$pk.GoName}}, e
+    return 0, e
   }
-  value.{{$pk.GoName}} = {{$pk.GoType}}(pk)
-  {{end}}
+  value.{{$pk.GoName}} = {{$pk.GoType}}(pk){{end}}
   return value.{{$pk.GoName}}, e
 }
-{{else}}
+{{else}} {{/* IsSequence */}}
   result, e := builder.RunWith(db).Exec();
   if nil != e {
     return value.{{$pk.GoName}}, e
   }
+
   _, e = result.RowsAffected()
   return value.{{$pk.GoName}}, e
 }

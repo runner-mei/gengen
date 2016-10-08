@@ -125,6 +125,9 @@ func (cmd *dbBase) GetAllTables() ([]Table, error) {
 		table.IsCombinedKey, table.PrimaryKey = getPrimaryKey(table.Columns)
 		table.ClassName = Typeify(strings.TrimPrefix(table.TableName, cmd.dbPrefix))
 
+		//if "tpt_network_devices" == table.TableName {
+		//	fmt.Println(table.TableName, table.IsCombinedKey, table.PrimaryKey)
+		//}
 		for _, column := range columns {
 			if "created_at" == column.DbName {
 				table.HasCreatedAt = true
@@ -214,11 +217,23 @@ func (cmd *dbBase) getByTable(db *sql.DB, tableCatalog, tableSchema, tableName s
 		if primaryKey.Valid {
 			column.IsPrimaryKey = primaryKey.Bool
 		}
+		isSequenceByForeignKey := false
 		if isForeignKey, e := cmd.isForeignKey(db, tableCatalog, tableSchema, tableName, column.DbName); e == nil {
-			column.IsForeignKey = isForeignKey
+			if "id" == column.DbName { // for tpt_managed_objects
+				column.IsPrimaryKey = true
+				isSequenceByForeignKey = true
+			} else {
+				column.IsForeignKey = isForeignKey
+			}
+			//if "id" == column.DbName {
+			//	fmt.Println(tableName, column.DbName, isForeignKey)
+			//}
 		}
 		if isSequence.Valid {
 			column.IsSequence = isSequence.Bool
+		}
+		if isSequenceByForeignKey {
+			column.IsSequence = true
 		}
 
 		found := false
