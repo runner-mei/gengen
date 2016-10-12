@@ -322,7 +322,7 @@ func (self *{{firstLower .table.ClassName}}Model) scan(scanner squirrel.RowScann
   }
 
   {{range $x := .columns }}{{if $x.IsNullable}}
-  if {{toNullName $x.DbName}}.Valid { {{template "toNullValue" $x}}}
+  {{template "toNullValue" $x}}
   {{end}}{{end}}
 
   return &value, nil
@@ -467,12 +467,11 @@ func (self *{{firstLower .table.ClassName}}Model) UpdateIt(db squirrel.BaseRunne
   {{end}}{{end}}{{if .table.HasUpdatedAt}}value.UpdatedAt = time.Now()
   {{end}}{{$columns := .columns | list_update}}builder := squirrel.Update(self.TableName).
     {{range $idx, $x := $columns }}{{if not $x.IsForeignKey}}{{if not $x.IsPrimaryKey}}Set("{{$x.DbName}}", value.{{$x.GoName}}{{if notSQLSupport $x.GoType}}.String(){{end}}).
-    {{end}}{{end}}{{end}}
-    Where({{range $idx, $column := .table.PrimaryKey}}squirrel.Eq{"{{$column.DbName}}": value.{{$column.GoName}} }{{if last $columns $idx | not}},
+    {{end}}{{end}}{{end}}Where({{range $idx, $column := .table.PrimaryKey}}squirrel.Eq{"{{$column.DbName}}": value.{{$column.GoName}} }{{if last $columns $idx | not}},
       {{end}}{{end}})
 
   {{range $idx, $x := $columns }}{{if $x.IsForeignKey}}if value.{{$x.GoName}} > 0 {
-    builder.Set("{{$x.GoName}}", value.{{$x.GoName}})
+    builder = builder.Set("{{$x.DbName}}", value.{{$x.GoName}})
   }
   {{end}}{{end}}
 
@@ -544,33 +543,33 @@ var {{.table.ClassName}}Model = {{firstLower .table.ClassName}}Model{
 }
 `
 
-var template_sql_null_value = `{{if eq .DbType "bool"}}
+var template_sql_null_value = `{{if eq .DbType "bool"}}if {{toNullName .DbName}}.Valid { 
       value.{{.GoName}} = {{toNullName .DbName}}.Bool
-    {{else if eq .GoType "int64"}}
+    }{{else if eq .GoType "int64"}}if {{toNullName .DbName}}.Valid { 
       value.{{.GoName}} = {{toNullName .DbName}}.Int64
-    {{else if eq .DbType "int4"}}
+    }{{else if eq .DbType "int4"}}if {{toNullName .DbName}}.Valid { 
       value.{{.GoName}} = int({{toNullName .DbName}}.Int64)
-    {{else if eq .DbType "int8"}}
+    }{{else if eq .DbType "int8"}}if {{toNullName .DbName}}.Valid { 
       value.{{.GoName}} = {{toNullName .DbName}}.Int64
-    {{else if eq .DbType "float4"}}
+    }{{else if eq .DbType "float4"}}if {{toNullName .DbName}}.Valid { 
       value.{{.GoName}} = {{toNullName .DbName}}.Float64
-    {{else if eq .DbType "float8"}}
+    }{{else if eq .DbType "float8"}}if {{toNullName .DbName}}.Valid { 
       value.{{.GoName}} = {{toNullName .DbName}}.Float64
-    {{else if eq .DbType "numeric"}}
+    }{{else if eq .DbType "numeric"}}if {{toNullName .DbName}}.Valid { 
       value.{{.GoName}} = {{toNullName .DbName}}.Float64
-    {{else if eq .DbType "varchar"}}
+    }{{else if eq .DbType "varchar"}}if {{toNullName .DbName}}.Valid { 
       value.{{.GoName}} = {{toNullName .DbName}}.String
-    {{else if eq .DbType "text"}}
+    }{{else if eq .DbType "text"}}if {{toNullName .DbName}}.Valid { 
       value.{{.GoName}} = {{toNullName .DbName}}.String
-    {{else if eq .DbType "json"}}
-      value.{{.GoName}} = {{toNullName .DbName}}.String
+    }{{else if eq .DbType "json"}}
+      value.{{.GoName}} = ToJSON({{toNullName .DbName}})
     {{else if eq .DbType "jsonb"}}
-      value.{{.GoName}} = {{toNullName .DbName}}.String
-    {{else if eq .DbType "timestamp"}}
+      value.{{.GoName}} = ToJSON({{toNullName .DbName}})
+    {{else if eq .DbType "timestamp"}}if {{toNullName .DbName}}.Valid { 
       value.{{.GoName}} = {{toNullName .DbName}}.Time
-    {{else if eq .DbType "timestamptz"}}
+    }{{else if eq .DbType "timestamptz"}}if {{toNullName .DbName}}.Valid { 
       value.{{.GoName}} = {{toNullName .DbName}}.Time
-    {{else if eq .DbType "cidr"}}
+    }{{else if eq .DbType "cidr"}}if {{toNullName .DbName}}.Valid { 
       if "" != {{toNullName .DbName}}.String {
         ipValue := net.ParseIP({{toNullName .DbName}}.String)
         if nil != ipValue {
@@ -579,11 +578,11 @@ var template_sql_null_value = `{{if eq .DbType "bool"}}
           value.{{.GoName}} = cidr
         }
       }
-    {{else if eq .DbType "macaddr"}}
+    }{{else if eq .DbType "macaddr"}}if {{toNullName .DbName}}.Valid { 
       value.{{.GoName}} = {{toNullName .DbName}}.String
-    {{else}}
+    }{{else}}if {{toNullName .DbName}}.Valid { 
       type({{.DbType}}) of value.{{.DbName}} is unsupported...........................................
-    {{end}}`
+    }{{end}}`
 
 func ToGoTypeFromDbType(nm string) string {
 	switch nm {
@@ -606,7 +605,7 @@ func ToGoTypeFromDbType(nm string) string {
 	case "macaddr":
 		return "string"
 	case "json", "jsonb":
-		return "string"
+		return "JSON"
 	default:
 		panic("'" + nm + "' is unsupported")
 	}
@@ -633,7 +632,7 @@ func ToNullTypeFromPostgres(nm string) string {
 	case "macaddr":
 		return "sql.NullString"
 	case "json", "jsonb":
-		return "sql.NullString"
+		return "sql.RawBytes"
 	default:
 		panic("'" + nm + "' is unsupported")
 	}

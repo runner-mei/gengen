@@ -28,6 +28,14 @@ func isPlaceholderWithDollar(value interface{}) bool {
 	return true
 }
 
+// JSON 代表一个数据库中一个 json
+type JSON []byte
+
+// ToJSON 将字节数组转成一个 JSON 对象
+func ToJSON(bs []byte) JSON {
+	return JSON(bs)
+}
+
 // ViewModel - 数据库视图模型
 type ViewModel struct {
 	TableName   string
@@ -35,7 +43,7 @@ type ViewModel struct {
 }
 
 // Count - 统计符合条件的记录数
-func (viewModel *ViewModel) Count(db squirrel.QueryRower, exprs ...Expr) (count int64, err error) {
+func (viewModel *ViewModel) Count(db squirrel.QueryRower, exprs ...Sqlizer) (count int64, err error) {
 	selectBuilder := viewModel.Where(exprs...).Select("count(*)").From(viewModel.TableName)
 	if isPlaceholderWithDollar(db) {
 		selectBuilder = selectBuilder.PlaceholderFormat(squirrel.Dollar)
@@ -44,8 +52,8 @@ func (viewModel *ViewModel) Count(db squirrel.QueryRower, exprs ...Expr) (count 
 	return
 }
 
-// Where - 生成查询语句， 如 Where().Select()
-func (viewModel *ViewModel) Where(exprs ...Expr) squirrel.StatementBuilderType {
+// Where - 生成查询语句， 如 Where(UserModel.C.NAME.EQU('小明')).Select()
+func (viewModel *ViewModel) Where(exprs ...Sqlizer) squirrel.StatementBuilderType {
 	if len(exprs) == 0 {
 		return squirrel.StatementBuilder
 	}
@@ -79,7 +87,7 @@ func (viewModel *ViewModel) UpdateBy(db squirrel.BaseRunner, values map[string]i
 	return result.RowsAffected()
 }
 
-func (viewModel *ViewModel) Delete(db squirrel.BaseRunner, exprs ...Expr) (int64, error) {
+func (viewModel *ViewModel) Delete(db squirrel.BaseRunner, exprs ...Sqlizer) (int64, error) {
 	sq := viewModel.Where(exprs...).Delete(viewModel.TableName)
 	if isPlaceholderWithDollar(db) {
 		sq = sq.PlaceholderFormat(squirrel.Dollar)
@@ -170,19 +178,94 @@ type ColumnModel struct {
 	Name string
 }
 
+func (model *ColumnModel) Field(name string) *columnModel {
+	column := &columnModel{origin: model}
+	return column.Field(name)
+}
+
+func (model *ColumnModel) TableAlias(alias string) *columnModel {
+	column := &columnModel{origin: model}
+	return column.TableAlias(alias)
+}
+
 func (model *ColumnModel) IsNULL() Expr {
-	return Expr{Column: model, Operator: "IS", Value: "NULL"}
+	column := &columnModel{origin: model}
+	return column.IsNULL()
 }
 
 func (model *ColumnModel) IsNotNULL() Expr {
-	return Expr{Column: model, Operator: "IS", Value: "NOT NULL"}
+	column := &columnModel{origin: model}
+	return column.IsNotNULL()
 }
 
 func (model *ColumnModel) EQU(value interface{}) Expr {
-	return Expr{Column: model, Operator: "=", Value: value}
+	column := &columnModel{origin: model}
+	return column.EQU(value)
 }
 
 func (model *ColumnModel) IN(values ...interface{}) Expr {
+	column := &columnModel{origin: model}
+	return column.IN(values...)
+}
+
+func (model *ColumnModel) NEQ(value interface{}) Expr {
+	column := &columnModel{origin: model}
+	return column.NEQ(value)
+}
+
+func (model *ColumnModel) EXISTS(value interface{}) Expr {
+	column := &columnModel{origin: model}
+	return column.EXISTS(value)
+}
+
+func (model *ColumnModel) LIKE(value string) Expr {
+	column := &columnModel{origin: model}
+	return column.LIKE(value)
+}
+
+type columnModel struct {
+	origin     *ColumnModel
+	subField   string
+	tableAlias string
+}
+
+func (column *columnModel) Field(name string) *columnModel {
+	column.subField = name
+	return column
+}
+
+func (column *columnModel) TableAlias(alias string) *columnModel {
+	column.tableAlias = alias
+	return column
+}
+
+func (column *columnModel) Name() string {
+	if "" == column.tableAlias {
+		if column.subField == "" {
+			return column.origin.Name
+		}
+		return column.origin.Name + "->'" + column.subField + "'"
+	}
+
+	if column.subField == "" {
+		return column.tableAlias + "." + column.origin.Name
+	}
+	return column.tableAlias + "." + column.origin.Name + "->'" + column.subField + "'"
+}
+
+func (model *columnModel) IsNULL() Expr {
+	return Expr{Column: model, Operator: "IS", Value: "NULL"}
+}
+
+func (model *columnModel) IsNotNULL() Expr {
+	return Expr{Column: model, Operator: "IS", Value: "NOT NULL"}
+}
+
+func (model *columnModel) EQU(value interface{}) Expr {
+	return Expr{Column: model, Operator: "=", Value: value}
+}
+
+func (model *columnModel) IN(values ...interface{}) Expr {
 	if len(values) == 0 {
 		panic(errors.New("values is empty"))
 	}
@@ -198,38 +281,39 @@ func (model *ColumnModel) IN(values ...interface{}) Expr {
 	return Expr{Column: model, Operator: "IN", Value: values}
 }
 
-func (model *ColumnModel) NEQ(value interface{}) Expr {
+func (model *columnModel) NEQ(value interface{}) Expr {
 	return Expr{Column: model, Operator: "<>", Value: value}
 }
 
-func (model *ColumnModel) EXISTS(value interface{}) Expr {
+func (model *columnModel) EXISTS(value interface{}) Expr {
 	return Expr{Column: model, Operator: "EXISTS", Value: value}
 }
 
-func (self *ColumnModel) LIKE(value string) Expr {
-	return Expr{Column: self, Operator: "LIKE", Value: value}
+func (model *columnModel) LIKE(value string) Expr {
+	return Expr{Column: model, Operator: "LIKE", Value: value}
 }
 
 type Expr struct {
-	Column   *ColumnModel
+	Column   *columnModel
 	Operator string
 	Value    interface{}
 }
 
 func (model Expr) ToSql() (string, []interface{}, error) {
 	if sqlizer, ok := model.Value.(squirrel.Sqlizer); ok {
-		sub_sqlstr, sub_args, e := sqlizer.ToSql()
+		subSqlstr, subArgs, e := sqlizer.ToSql()
 		if nil != e {
 			return "", nil, e
 		}
-		return model.Column.Name + " " + model.Operator + " " + sub_sqlstr, sub_args, nil
+		return model.Column.Name() + " " + model.Operator + " " + subSqlstr, subArgs, nil
 	}
+
 	if "IS" == model.Operator {
-		return model.Column.Name + " IS " + fmt.Sprint(model.Value), nil, nil
+		return model.Column.Name() + " IS " + fmt.Sprint(model.Value), nil, nil
 	}
 	if "IN" == model.Operator {
 		var buf bytes.Buffer
-		buf.WriteString(model.Column.Name)
+		buf.WriteString(model.Column.Name())
 		buf.WriteString(" IN (")
 		oldLength := buf.Len()
 		JoinObjects(&buf, model.Value)
@@ -240,7 +324,7 @@ func (model Expr) ToSql() (string, []interface{}, error) {
 		buf.WriteString(") ")
 		return buf.String(), nil, nil
 	}
-	return model.Column.Name + " " + model.Operator + " ? ", []interface{}{model.Value}, nil
+	return model.Column.Name() + " " + model.Operator + " ? ", []interface{}{model.Value}, nil
 }
 
 func JoinObjects(buf *bytes.Buffer, value interface{}) {
