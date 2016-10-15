@@ -565,9 +565,9 @@ var template_sql_null_value = `{{if eq .DbType "bool"}}if {{toNullName .DbName}}
     }{{else if eq .DbType "text"}}if {{toNullName .DbName}}.Valid { 
       value.{{.GoName}} = {{toNullName .DbName}}.String
     }{{else if eq .DbType "json"}}
-      value.{{.GoName}} = ToJSONCopy({{toNullName .DbName}})
+      value.{{.GoName}} = ToJSON({{toNullName .DbName}})
     {{else if eq .DbType "jsonb"}}
-      value.{{.GoName}} = ToJSONCopy({{toNullName .DbName}})
+      value.{{.GoName}} = ToJSON({{toNullName .DbName}})
     {{else if eq .DbType "timestamp"}}if {{toNullName .DbName}}.Valid { 
       value.{{.GoName}} = {{toNullName .DbName}}.Time
     }{{else if eq .DbType "timestamptz"}}if {{toNullName .DbName}}.Valid { 
@@ -644,7 +644,7 @@ func ToNullTypeFromPostgres(nm string) string {
 	case "macaddr":
 		return "sql.NullString"
 	case "json", "jsonb":
-		return "sql.RawBytes"
+		return "[]byte" // "sql.RawBytes" -- sql: RawBytes isn't allowed on Row.Scan
 	default:
 		panic("'" + nm + "' is unsupported")
 	}
