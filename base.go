@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -31,8 +32,49 @@ func isPlaceholderWithDollar(value interface{}) bool {
 // JSON 代表一个数据库中一个 json
 type JSON []byte
 
-// ToJSON 将字节数组转成一个 JSON 对象
+// String 将字节数组转成一个 JSON 对象
+func (js JSON) String() string {
+	if len(js) == 0 {
+		return "{}"
+	}
+	return string(js)
+}
+
+// MarshalJSON returns *m as the JSON encoding of m.
+func (m *JSON) MarshalJSON() ([]byte, error) {
+	if len(*m) == 0 {
+		return []byte("{}"), nil
+	}
+	return *m, nil
+}
+
+// UnmarshalJSON sets *m to a copy of data.
+func (m *JSON) UnmarshalJSON(data []byte) error {
+	if m == nil {
+		return errors.New("models.JSON: UnmarshalJSON on nil pointer")
+	}
+	*m = append((*m)[0:0], data...)
+	return nil
+}
+
+// ToJSON 将字节数组转成一个 JSON 对象, 注意它将不拷贝字节数据
 func ToJSON(bs []byte) JSON {
+	return JSON(bs)
+}
+
+// ToJSONCopy 将字节数组转成一个 JSON 对象, 注意它将拷贝字节数据
+func ToJSONCopy(bs []byte) JSON {
+	data := make([]byte, len(bs))
+	copy(data, bs)
+	return JSON(data)
+}
+
+// ToJSONFromAny 将一个对象转成一个 JSON 对象
+func ToJSONFromAny(v interface{}) JSON {
+	bs, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
 	return JSON(bs)
 }
 
@@ -244,13 +286,13 @@ func (column *columnModel) Name() string {
 		if column.subField == "" {
 			return column.origin.Name
 		}
-		return column.origin.Name + "->'" + column.subField + "'"
+		return column.origin.Name + "->>'" + column.subField + "'"
 	}
 
 	if column.subField == "" {
 		return column.tableAlias + "." + column.origin.Name
 	}
-	return column.tableAlias + "." + column.origin.Name + "->'" + column.subField + "'"
+	return column.tableAlias + "." + column.origin.Name + "->>'" + column.subField + "'"
 }
 
 func (model *columnModel) IsNULL() Expr {

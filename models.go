@@ -118,7 +118,7 @@ func (cmd *GenerateModelsCommand) init() error {
 			// case "int":
 			//  return "_int"
 			// }
-			return "null_" + s
+			return "null" + CamelCase(s)
 		},
 		"CamelCase":   CamelCase,
 		"Underscore":  Underscore,
@@ -130,7 +130,7 @@ func (cmd *GenerateModelsCommand) init() error {
 		"ToUpper":     strings.ToUpper,
 		"ToNullType":  ToNullTypeFromPostgres,
 		"notSQLSupport": func(typ string) bool {
-			return "net.IP" == typ
+			return "net.IP" == typ || "JSON" == typ
 		},
 		"firstLower": func(s string) string {
 			if "" == s {
@@ -147,12 +147,12 @@ func (cmd *GenerateModelsCommand) init() error {
 	}
 
 	var e error
-	cmd.templateHeader, e = template.New("default").Funcs(funcs).Parse(template_header_text)
+	cmd.templateHeader, e = template.New("template_header_text").Funcs(funcs).Parse(template_header_text)
 	if nil != e {
 		return e
 	}
 
-	cmd.templateModel, e = template.New("default").Funcs(funcs).Parse(template_model_text)
+	cmd.templateModel, e = template.New("template_model_text").Funcs(funcs).Parse(template_model_text)
 	if nil != e {
 		return e
 	}
@@ -312,16 +312,19 @@ type {{firstLower .table.ClassName}}Model struct{
 
 func (self *{{firstLower .table.ClassName}}Model) scan(scanner squirrel.RowScanner) (*{{.table.ClassName}}, error){
   var value {{.table.ClassName}}
-  {{$columns := .columns}}{{range $x := .columns }}{{if $x.IsNullable}}
-  var {{toNullName $x.DbName}} {{ToNullType $x.DbType}}{{end}}{{end}}
+  {{$columns := .columns}}{{range $x := .columns }}{{if $x.IsNullable}}var {{toNullName $x.DbName}} {{ToNullType $x.DbType}}
+  {{else if eq "net.IP" $x.GoType}}var {{toNullName $x.DbName}} sql.NullString
+  {{end}}{{end}}
 
-  e := scanner.Scan({{range $idx, $x := .columns }}{{if not $x.IsNullable}}&value.{{$x.GoName}}{{else}}&{{toNullName $x.DbName}}{{end}}{{if last $columns $idx | not}},
+  e := scanner.Scan({{range $idx, $x := .columns }}{{if eq "net.IP" $x.GoType}}&{{toNullName $x.DbName}}{{else if $x.IsNullable}}&{{toNullName $x.DbName}}{{else}}&value.{{$x.GoName}}{{end}}{{if last $columns $idx | not}},
     {{end}}{{end}})
   if nil != e {
     return nil, e
   }
 
   {{range $x := .columns }}{{if $x.IsNullable}}
+  {{template "toNullValue" $x}}
+  {{else if  eq "net.IP" $x.GoType}}
   {{template "toNullValue" $x}}
   {{end}}{{end}}
 
@@ -562,13 +565,22 @@ var template_sql_null_value = `{{if eq .DbType "bool"}}if {{toNullName .DbName}}
     }{{else if eq .DbType "text"}}if {{toNullName .DbName}}.Valid { 
       value.{{.GoName}} = {{toNullName .DbName}}.String
     }{{else if eq .DbType "json"}}
-      value.{{.GoName}} = ToJSON({{toNullName .DbName}})
+      value.{{.GoName}} = ToJSONCopy({{toNullName .DbName}})
     {{else if eq .DbType "jsonb"}}
-      value.{{.GoName}} = ToJSON({{toNullName .DbName}})
+      value.{{.GoName}} = ToJSONCopy({{toNullName .DbName}})
     {{else if eq .DbType "timestamp"}}if {{toNullName .DbName}}.Valid { 
       value.{{.GoName}} = {{toNullName .DbName}}.Time
     }{{else if eq .DbType "timestamptz"}}if {{toNullName .DbName}}.Valid { 
       value.{{.GoName}} = {{toNullName .DbName}}.Time
+    }{{else if eq .GoType "net.IP"}}if {{toNullName .DbName}}.Valid { 
+      if "" != {{toNullName .DbName}}.String {
+        ipValue := net.ParseIP({{toNullName .DbName}}.String)
+        if nil != ipValue {
+          value.{{.GoName}} = ipValue
+        } else if cidr, _, e := net.ParseCIDR({{toNullName .DbName}}.String); nil == e {
+          value.{{.GoName}} = cidr
+        }
+      }
     }{{else if eq .DbType "cidr"}}if {{toNullName .DbName}}.Valid { 
       if "" != {{toNullName .DbName}}.String {
         ipValue := net.ParseIP({{toNullName .DbName}}.String)
