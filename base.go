@@ -245,6 +245,26 @@ func (model *ColumnModel) EQU(value interface{}) Expr {
 	return column.EQU(value)
 }
 
+func (model *ColumnModel) GT(value interface{}) Expr {
+	column := &columnModel{origin: model}
+	return column.GT(value)
+}
+
+func (model *ColumnModel) GTE(value interface{}) Expr {
+	column := &columnModel{origin: model}
+	return column.GTE(value)
+}
+
+func (model *ColumnModel) LT(value interface{}) Expr {
+	column := &columnModel{origin: model}
+	return column.LT(value)
+}
+
+func (model *ColumnModel) LTE(value interface{}) Expr {
+	column := &columnModel{origin: model}
+	return column.LTE(value)
+}
+
 func (model *ColumnModel) IN(values ...interface{}) Expr {
 	column := &columnModel{origin: model}
 	return column.IN(values...)
@@ -305,6 +325,22 @@ func (model *columnModel) IsNotNULL() Expr {
 
 func (model *columnModel) EQU(value interface{}) Expr {
 	return Expr{Column: model, Operator: "=", Value: value}
+}
+
+func (model *columnModel) GT(value interface{}) Expr {
+	return Expr{Column: model, Operator: ">", Value: value}
+}
+
+func (model *columnModel) GTE(value interface{}) Expr {
+	return Expr{Column: model, Operator: ">=", Value: value}
+}
+
+func (model *columnModel) LT(value interface{}) Expr {
+	return Expr{Column: model, Operator: "<", Value: value}
+}
+
+func (model *columnModel) LTE(value interface{}) Expr {
+	return Expr{Column: model, Operator: "<=", Value: value}
 }
 
 func (model *columnModel) IN(values ...interface{}) Expr {
