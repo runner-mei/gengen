@@ -33,8 +33,8 @@ func isPlaceholderWithDollar(value interface{}) bool {
 type Fields map[string]interface{}
 
 // ThrowPrimaryKeyInvalid 返回一个 主键无效的错误
-func ThrowPrimaryKeyInvalid(model *ViewModel) error {
-	return errors.New("primary key of '" + model.TableName + "' is invalid")
+func ThrowPrimaryKeyInvalid(tableName string) error {
+	return errors.New("primary key of '" + tableName + "' is invalid")
 }
 
 // JSON 代表一个数据库中一个 json

@@ -460,11 +460,11 @@ func (self *{{firstLower .table.ClassName}}Model) CreateIt(db squirrel.BaseRunne
 {{$columns := .columns}}
 func (self *{{firstLower .table.ClassName}}Model) UpdateIt(db squirrel.BaseRunner, value *{{.table.ClassName}}) (error) {
   {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}{{if isIntegerType $pk.GoType}}if 0 == value.{{$pk.GoName}} {
-    return ThrowPrimaryKeyInvalid(self)
+    return ThrowPrimaryKeyInvalid(self.TableName)
   }
 
   {{end}}{{if eq "string" $pk.GoType}}if "" == value.{{$pk.GoName}} {
-    return ThrowPrimaryKeyInvalid(self)
+    return ThrowPrimaryKeyInvalid(self.TableName)
   }
 
   {{end}}{{end}}{{if .table.HasUpdatedAt}}value.UpdatedAt = time.Now()
@@ -513,10 +513,10 @@ func (self *{{firstLower .table.ClassName}}Model) DeleteIt(db squirrel.BaseRunne
 {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
 func (self *{{firstLower .table.ClassName}}Model) DeleteByID(db squirrel.BaseRunner, key {{$pk.GoType}}) error {
   {{if isIntegerType $pk.GoType}}if 0 == key {
-    return ThrowPrimaryKeyInvalid(self)
+    return ThrowPrimaryKeyInvalid(self.TableName)
   }
   {{end}}{{if eq "string" $pk.GoType}}if "" == key {
-    return ThrowPrimaryKeyInvalid(self)
+    return ThrowPrimaryKeyInvalid(self.TableName)
   }
   {{end}}
 
