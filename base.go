@@ -37,6 +37,11 @@ func ThrowUpdateFailWithPrimaryKeyInvalid(tableName string) error {
 	return errors.New("update fail becase primary key of '" + tableName + "' is invalid")
 }
 
+// ThrowDeleteFailWithPrimaryKeyInvalid 返回一个 主键无效的错误
+func ThrowDeleteFailWithPrimaryKeyInvalid(tableName string) error {
+	return errors.New("delete fail becase primary key of '" + tableName + "' is invalid")
+}
+
 // JSON 代表一个数据库中一个 json
 type JSON []byte
 

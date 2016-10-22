@@ -513,10 +513,10 @@ func (self *{{firstLower .table.ClassName}}Model) DeleteIt(db squirrel.BaseRunne
 {{if not .table.IsCombinedKey}}{{$pk := index .table.PrimaryKey 0}}
 func (self *{{firstLower .table.ClassName}}Model) DeleteByID(db squirrel.BaseRunner, key {{$pk.GoType}}) error {
   {{if isIntegerType $pk.GoType}}if 0 == key {
-    return ThrowUpdateFailWithPrimaryKeyInvalid(self.TableName)
+    return ThrowDeleteFailWithPrimaryKeyInvalid(self.TableName)
   }
   {{end}}{{if eq "string" $pk.GoType}}if "" == key {
-    return ThrowUpdateFailWithPrimaryKeyInvalid(self.TableName)
+    return ThrowDeleteFailWithPrimaryKeyInvalid(self.TableName)
   }
   {{end}}
 
