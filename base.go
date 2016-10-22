@@ -32,6 +32,11 @@ func isPlaceholderWithDollar(value interface{}) bool {
 // Fields 代表多个字段和值
 type Fields map[string]interface{}
 
+// ThrowPrimaryKeyInvalid 返回一个 主键无效的错误
+func ThrowPrimaryKeyInvalid(model *ViewModel) error {
+	return errors.New("primary key of '" + model.TableName + "' is invalid")
+}
+
 // JSON 代表一个数据库中一个 json
 type JSON []byte
 
@@ -44,19 +49,19 @@ func (js JSON) String() string {
 }
 
 // MarshalJSON returns *m as the JSON encoding of m.
-func (m *JSON) MarshalJSON() ([]byte, error) {
-	if len(*m) == 0 {
+func (js *JSON) MarshalJSON() ([]byte, error) {
+	if len(*js) == 0 {
 		return []byte("{}"), nil
 	}
-	return *m, nil
+	return *js, nil
 }
 
 // UnmarshalJSON sets *m to a copy of data.
-func (m *JSON) UnmarshalJSON(data []byte) error {
-	if m == nil {
+func (js *JSON) UnmarshalJSON(data []byte) error {
+	if js == nil {
 		return errors.New("models.JSON: UnmarshalJSON on nil pointer")
 	}
-	*m = append((*m)[0:0], data...)
+	*js = append((*js)[0:0], data...)
 	return nil
 }
 
