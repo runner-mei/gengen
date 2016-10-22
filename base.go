@@ -32,7 +32,7 @@ func isPlaceholderWithDollar(value interface{}) bool {
 // Fields 代表多个字段和值
 type Fields map[string]interface{}
 
-// ThrowPrimaryKeyInvalid 返回一个 主键无效的错误
+// ThrowUpdateFailWithPrimaryKeyInvalid 返回一个 主键无效的错误
 func ThrowUpdateFailWithPrimaryKeyInvalid(tableName string) error {
 	return errors.New("update fail becase primary key of '" + tableName + "' is invalid")
 }
