@@ -29,6 +29,9 @@ func isPlaceholderWithDollar(value interface{}) bool {
 	return true
 }
 
+// Fields 代表多个字段和值
+type Fields map[string]interface{}
+
 // JSON 代表一个数据库中一个 json
 type JSON []byte
 
@@ -108,6 +111,25 @@ func (viewModel *ViewModel) Where(exprs ...Sqlizer) squirrel.StatementBuilderTyp
 	}
 
 	return builder.Append(squirrel.StatementBuilder, "WhereParts", squirrel.And(sqlizers)).(squirrel.StatementBuilderType)
+}
+
+func (viewModel *ViewModel) Update(db squirrel.BaseRunner, values map[string]interface{}, args ...squirrel.Sqlizer) (int64, error) {
+	sql := squirrel.Update(viewModel.TableName)
+	if isPlaceholderWithDollar(db) {
+		sql = sql.PlaceholderFormat(squirrel.Dollar)
+	}
+
+	for key, value := range values {
+		sql = sql.Set(key, value)
+	}
+
+	sql = sql.Where(squirrel.And(args))
+
+	result, e := sql.RunWith(db).Exec()
+	if nil != e {
+		return 0, e
+	}
+	return result.RowsAffected()
 }
 
 func (viewModel *ViewModel) UpdateBy(db squirrel.BaseRunner, values map[string]interface{}, pred interface{}, args ...interface{}) (int64, error) {
