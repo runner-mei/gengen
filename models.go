@@ -596,7 +596,7 @@ var template_sql_null_value = `{{if eq .DbType "bool"}}if {{toNullName .DbName}}
       type({{.DbType}}) of value.{{.DbName}} is unsupported...........................................
     }{{end}}`
 
-func ToGoTypeFromDbType(nm string) string {
+func ToGoTypeFromDbType(tableName, nm string) string {
 	switch nm {
 	case "bool":
 		return "bool"
@@ -619,7 +619,7 @@ func ToGoTypeFromDbType(nm string) string {
 	case "json", "jsonb":
 		return "JSON"
 	default:
-		panic("'" + nm + "' is unsupported")
+		panic("'" + nm + "' of '" + tableName + "' is unsupported")
 	}
 }
 

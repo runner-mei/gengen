@@ -265,6 +265,11 @@ func (model *ColumnModel) LIKE(value string) Expr {
 	return column.LIKE(value)
 }
 
+func (model *ColumnModel) Search(lang, value string) Expr {
+	column := &columnModel{origin: model}
+	return column.Search(lang, value)
+}
+
 type columnModel struct {
 	origin     *ColumnModel
 	subField   string
@@ -333,6 +338,13 @@ func (model *columnModel) EXISTS(value interface{}) Expr {
 
 func (model *columnModel) LIKE(value string) Expr {
 	return Expr{Column: model, Operator: "LIKE", Value: value}
+}
+
+func (model *columnModel) Search(lang, value string) Expr {
+	if "" == lang {
+		lang = "english"
+	}
+	return Expr{Column: model, Operator: "@@", Value: "plainto_tsquery('" + lang + "','" + value + "')"}
 }
 
 type Expr struct {

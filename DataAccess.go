@@ -257,7 +257,7 @@ func (cmd *dbBase) getByTable(db *sql.DB, tableCatalog, tableSchema, tableName s
 		} else if column.IsForeignKey {
 			column.GoType = "int64"
 		} else {
-			column.GoType = ToGoTypeFromDbType(column.DbType)
+			column.GoType = ToGoTypeFromDbType(tableName, column.DbType)
 		}
 		columns = append(columns, column)
 	}
