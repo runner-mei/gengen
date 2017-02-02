@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mdbs:classDefinitions lastModified="2009-12-23T12:12:12" xmlns:mdbs="http://schemas.hengwei.com.cn/tpt/1/metricDefinitions" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.hengwei.com.cn/tpt/1/metricDefinitions metricDefinitions.xsd">
+	<mdbs:class name="Person" displayName="人员" >
+	<mdbs:property name="Age" displayName="cc">
+		<mdbs:restriction type="datetime">
+			<mdbs:defaultValue>2009-12-26 12:12:12<mdbs:defaultValue>
+			<mdbs:minValue>2009-12-23 12:12:12<mdbs:minValue
+			<mdbs:maxValue>2009-12-25 12:12:12<mdbs:maxValue>
+		</mdbs:restriction>
+	</mdbs:property>
+	</mdbs:class>		
+</mdbs:classDefinitions>

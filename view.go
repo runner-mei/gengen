@@ -1,8 +1,8 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,21 +15,18 @@ type GenerateViewCommand struct {
 }
 
 // Run - 生成代码
-func (cmd *GenerateViewCommand) Run(args []string) {
+func (cmd *GenerateViewCommand) Run(args []string) error {
 	if len(args) == 0 {
-		fmt.Println("table name is missing.")
-		return
+		return errors.New("table name is missing.")
 	}
 
 	if e := cmd.init(); nil != e {
-		fmt.Println(e)
-		return
+		return e
 	}
 
 	tables, e := cmd.GetAllTables()
 	if nil != e {
-		log.Println(e)
-		return
+		return e
 	}
 
 	for _, table := range tables {
@@ -45,10 +42,10 @@ func (cmd *GenerateViewCommand) Run(args []string) {
 		}
 
 		if e := cmd.genrateViewsFromTable(&table); nil != e {
-			log.Println(e)
-			return
+			return e
 		}
 	}
+	return nil
 }
 
 func (cmd *GenerateViewCommand) genrateViewsFromTable(table *Table) error {

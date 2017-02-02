@@ -28,8 +28,8 @@ type GenerateModelsCommand struct {
 // Flags - 申明参数
 func (cmd *GenerateModelsCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 	cmd.initFlags(fs)
-	flag.StringVar(&cmd.ns, "namespace", "models", "the namespace name")
-	flag.StringVar(&cmd.file, "file", "models.go", "the output target")
+	fs.StringVar(&cmd.ns, "namespace", "models", "the namespace name")
+	fs.StringVar(&cmd.file, "file", "models.go", "the output target")
 	return fs
 }
 
@@ -165,16 +165,14 @@ func (cmd *GenerateModelsCommand) init() error {
 }
 
 // Run - 生成数据库模型代码
-func (cmd *GenerateModelsCommand) Run(args []string) {
+func (cmd *GenerateModelsCommand) Run(args []string) error {
 	if e := cmd.init(); nil != e {
-		log.Println(e)
-		return
+		return e
 	}
 
 	tables, e := cmd.GetAllTables()
 	if nil != e {
-		log.Println(e)
-		return
+		return e
 	}
 
 	out := os.Stderr
@@ -188,30 +186,27 @@ func (cmd *GenerateModelsCommand) Run(args []string) {
 	default:
 		out, e = os.OpenFile(cmd.file, os.O_TRUNC|os.O_CREATE|os.O_RDWR, 0)
 		if nil != e {
-			log.Println(e)
-			return
+			return e
 		}
 		target := filepath.Join(filepath.Dir(cmd.file), "base.go")
 		if e = copyFile(cmd.ns, embede_text, target); nil != e {
-			log.Println(e)
-			return
+			return e
 		}
 	}
 
 	if e := cmd.templateHeader.Execute(out, map[string]interface{}{
 		"Namespace": cmd.ns,
 	}); nil != e {
-		log.Println(e)
-		return
+		return e
 	}
 
 	for _, table := range tables {
 		log.Println("GEN ", table.TableName)
 		if e := cmd.genrateFromTable(out, table); nil != e {
-			log.Println(e)
-			return
+			return e
 		}
 	}
+	return nil
 }
 
 func (cmd *GenerateModelsCommand) genrateFromTable(out io.Writer, table Table) error {

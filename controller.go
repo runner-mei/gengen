@@ -4,7 +4,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -22,9 +21,9 @@ type generateBase struct {
 
 // Flags - 申明参数
 func (cmd *generateBase) Flags(fs *flag.FlagSet) *flag.FlagSet {
-	cmd.initFlags(fs)
-	flag.StringVar(&cmd.root, "root", "", "the root directory")
-	flag.BoolVar(&cmd.override, "override", false, "")
+	fs = cmd.initFlags(fs)
+	fs.StringVar(&cmd.root, "root", "", "the root directory")
+	fs.BoolVar(&cmd.override, "override", false, "")
 	return fs
 }
 
@@ -50,21 +49,18 @@ type GenerateControllerCommand struct {
 }
 
 // Run - 生成代码
-func (cmd *GenerateControllerCommand) Run(args []string) {
+func (cmd *GenerateControllerCommand) Run(args []string) error {
 	if len(args) == 0 {
-		fmt.Println("table name is missing.")
-		return
+		return errors.New("table name is missing.")
 	}
 
 	if e := cmd.init(); nil != e {
-		fmt.Println(e)
-		return
+		return e
 	}
 
 	tables, e := cmd.GetAllTables()
 	if nil != e {
-		log.Println(e)
-		return
+		return e
 	}
 
 	for _, table := range tables {
@@ -80,10 +76,10 @@ func (cmd *GenerateControllerCommand) Run(args []string) {
 		}
 
 		if e := cmd.genrateControllerFromTable(&table); nil != e {
-			log.Println(e)
-			return
+			return e
 		}
 	}
+	return nil
 }
 
 func (cmd *GenerateControllerCommand) genrateControllerFromTable(table *Table) error {
