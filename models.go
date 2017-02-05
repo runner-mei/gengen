@@ -189,7 +189,7 @@ func (cmd *GenerateModelsCommand) Run(args []string) error {
 			return e
 		}
 		target := filepath.Join(filepath.Dir(cmd.file), "base.go")
-		if e = copyFile(cmd.ns, embede_text, target); nil != e {
+		if e = copyFile(cmd.ns, embededText, target); nil != e {
 			return e
 		}
 	}

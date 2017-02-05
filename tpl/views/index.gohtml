@@ -1,0 +1,27 @@
+{{set . "title" "[[.controllerName]]"}}
+{{append . "moreScripts" "/public/js/[[underscore .controllerName]].js"}}
+{{template "layouts/header.html" .}}
+
+<div class="widget stacked">
+  <div class="gui-list">
+    {{template "[[.controllerName]]/quick-bar.html" .}}
+    <table class="table table-bordered table-striped table-highlight ">
+      <thead>
+      <tr>
+        <th><input type="checkbox" class="all-checker"></th>[[range $field := .class.Fields]]
+        <th><nobr>[[localizeName $field]]</nobr></th>[[end]]
+      </tr>
+      </thead>
+      {{range $v := .[[camelizeDownFirst .class.Name]]List}}
+      <tr>
+        <td><input type="checkbox" class="row-checker" key="{{$v.Id}}" url="{{url "[[.controllerName]].Edit" $v.Id}}" id="row-checker"></td>
+        [[range $column := .class.Fields]]
+        <td>{{$v.[[goify $column.Name true]]}}</td>[[end]]
+      </tr>
+      {{end}}
+    </table>
+    </div>
+</div>
+
+{{template "layouts/paginator.html" .}}
+{{template "layouts/footer.html" .}}

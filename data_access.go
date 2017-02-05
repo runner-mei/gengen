@@ -5,6 +5,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	_ "github.com/lib/pq"
@@ -262,4 +264,36 @@ func (cmd *dbBase) getByTable(db *sql.DB, tableCatalog, tableSchema, tableName s
 		columns = append(columns, column)
 	}
 	return columns, rows.Err()
+}
+
+// GenerateControllerCommand - 生成控制器
+type generateBase struct {
+	dbBase
+
+	root     string
+	override bool
+}
+
+// Flags - 申明参数
+func (cmd *generateBase) Flags(fs *flag.FlagSet) *flag.FlagSet {
+	fs = cmd.initFlags(fs)
+	fs.StringVar(&cmd.root, "root", "", "the root directory")
+	fs.BoolVar(&cmd.override, "override", false, "")
+	return fs
+}
+
+func (cmd *generateBase) init() error {
+	if "" == cmd.root {
+		for _, s := range []string{"conf/routes", "../conf/routes", "../../conf/routes", "../../conf/routes"} {
+			if st, e := os.Stat(s); nil == e && nil != st && !st.IsDir() {
+				cmd.root, _ = filepath.Abs(filepath.Join(s, "..", ".."))
+				break
+			}
+		}
+
+		if "" == cmd.root {
+			return errors.New("root directory isn't found")
+		}
+	}
+	return nil
 }

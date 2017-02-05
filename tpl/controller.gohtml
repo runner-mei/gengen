@@ -1,0 +1,115 @@
+import (
+  "mc/app"
+  "mc/app/libs"
+  "mc/app/models"
+  "mc/app/routes"
+
+  "github.com/revel/revel"
+)
+
+// [[.controllerName]] - 控制器
+type [[.controllerName]] struct {
+  *revel.Controller
+}
+
+// 列出所有记录
+func (c [[.controllerName]]) Index(pageIndex uint64) revel.Result {
+  //var exprs []models.Expr
+  //if "" != name {
+  //  exprs = append(exprs, models.[[.class.Name]]Model.C.NAME.LIKE("%"+name+"%"))
+  //}
+
+  total, err := models.[[.class.Name]]Model.Count(app.DbRunner) // exprs...)
+
+  if err != nil {
+    c.Flash.Error(err.Error())
+    c.FlashParams()
+    return c.Render(err)
+  }
+
+  [[camelizeDownFirst .class.Name]]List, err := models.[[.class.Name]]Model.QueryWith(app.DbRunner, models.[[.class.Name]]Model.Where(). //exprs...).
+    Select().Limit(libs.DEFAULT_SIZE_PER_PAGE).Offset(pageIndex*libs.DEFAULT_SIZE_PER_PAGE))
+  if err != nil {
+    c.Flash.Error(err.Error())
+    c.FlashParams()
+    return c.Render()
+  }
+  paginator := libs.NewPaginator(c.Request.Request, libs.DEFAULT_SIZE_PER_PAGE, total)
+  return c.Render([[camelizeDownFirst .class.Name]]List, paginator)
+}
+
+// 编辑新建记录
+func (c [[.controllerName]]) New() revel.Result {
+  return c.Render()
+}
+
+// 创建记录
+func (c [[.controllerName]]) Create([[camelizeDownFirst .class.Name]] *models.[[.class.Name]]) revel.Result {
+  if [[camelizeDownFirst .class.Name]].Validate(c.Validation) {
+    c.Validation.Keep()
+    c.FlashParams()
+    return c.Redirect(routes.[[.controllerName]].New())
+  }
+
+  _, err := [[camelizeDownFirst .class.Name]].CreateIt(app.DbRunner)
+  if err != nil {
+    c.Flash.Error(err.Error())
+    c.FlashParams()
+    return c.Redirect(routes.[[.controllerName]].New())
+  }
+
+  c.Flash.Success(revel.Message(c.Request.Locale, "insert.success"))
+  return c.Redirect(routes.[[.controllerName]].Index(0, ""))
+}
+
+// 编辑指定 id 的记录
+func (c [[.controllerName]]) Edit(id int64) revel.Result {
+  [[camelizeDownFirst .class.Name]], err := models.[[.class.Name]]s.FindByID(app.DbRunner, id)
+  if err != nil {
+    c.Flash.Error(err.Error())
+    c.FlashParams()
+    return c.Redirect(routes.[[.controllerName]].Index(0, ""))
+  }
+  return c.Render([[camelizeDownFirst .class.Name]])
+}
+
+
+// 按 id 更新记录
+func (c [[.controllerName]]) Update([[camelizeDownFirst .class.Name]] *models.[[.class.Name]]) revel.Result {
+  if [[camelizeDownFirst .class.Name]].Validate(c.Validation) {
+    c.Validation.Keep()
+    c.FlashParams()
+    return c.Redirect(routes.[[.controllerName]].Edit(int64([[camelizeDownFirst .class.Name]].Id)))
+  }
+
+  err := [[camelizeDownFirst .class.Name]].UpdateIt(app.DbRunner)
+  if err != nil {
+    c.Flash.Error(err.Error())
+    c.FlashParams()
+    return c.Redirect(routes.[[.controllerName]].Edit(int64([[camelizeDownFirst .class.Name]].Id)))
+  }
+  c.Flash.Success(revel.Message(c.Request.Locale, "update.success"))
+  return c.Redirect(routes.[[.controllerName]].Index(0, ""))
+}
+
+// 按 id 删除记录
+func (c [[.controllerName]]) Delete(id int64) revel.Result {
+  [[camelizeDownFirst .class.Name]] := &models.[[.class.Name]]{Id: id}
+  err := [[camelizeDownFirst .class.Name]].DeleteIt(app.DbRunner)
+  if nil != err {
+    c.Flash.Error(err.Error())
+  } else {
+    c.Flash.Success(revel.Message(c.Request.Locale, "delete.success"))
+  }
+  return c.Redirect([[.controllerName]].Index)
+}
+
+// 按 id 列表删除记录
+func (c [[.controllerName]]) DeleteByIDs(id_list []int64) revel.Result {
+  _, err := models.[[.class.Name]]Model.Delete(app.DbRunner, models.[[.class.Name]]Model.C.ID.IN(id_list))
+  if nil != err {
+    return c.RenderError(err)
+  } else {
+    return c.RenderJson(revel.Message(c.Request.Locale, "delete.success"))
+  }
+}

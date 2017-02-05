@@ -72,24 +72,31 @@ func (self *PropertyDefinition) IsPrimaryKey() bool {
 func (p *PropertyDefinition) PName() string {
 	return p.Name
 }
+
 func (p *PropertyDefinition) TypeSpec() TypeDefinition {
 	return p.Type
 }
+
 func (p *PropertyDefinition) CollectionType() CollectionType {
 	return p.Collection
 }
+
 func (p *PropertyDefinition) Required() bool {
 	return p.IsRequired
 }
+
 func (p *PropertyDefinition) ReadOnly() bool {
 	return p.IsReadOnly
 }
+
 func (p *PropertyDefinition) Uniquely() bool {
 	return p.IsUniquely
 }
+
 func (p *PropertyDefinition) Validators() []Validator {
 	return p.Restrictions
 }
+
 func (p *PropertyDefinition) Default() interface{} {
 	return p.DefaultValue
 }

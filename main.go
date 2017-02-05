@@ -50,8 +50,13 @@ func (cmd *embedeCommand) Run(args []string) error {
 	out.WriteString(`package main
 `)
 
-	for _, t := range [][2]string{{"embede_text", "base.go"},
-		{"structText", "tpl/struct.go"}} {
+	for _, t := range [][2]string{{"embededText", "base.go"},
+		{"structText", "tpl/struct.gohtml"},
+		{"controllerText", "tpl/controller.gohtml"},
+		{"viewEditText", "tpl/views/edit.gohtml"},
+		{"viewFieldsText", "tpl/views/fields.gohtml"},
+		{"viewIndexText", "tpl/views/index.gohtml"},
+		{"viewNewText", "tpl/views/new.gohtml"}} {
 		if e := cmd.copyFile(out, t[0], t[1]); e != nil {
 			return e
 		}
@@ -80,6 +85,7 @@ func init() {
 	// register version as a subcommand
 	command.On("version", "prints the version", &versionCommand{}, nil)
 	command.On("embede", "", &embedeCommand{}, nil)
+	command.On("embed", "", &embedeCommand{}, nil)
 	command.On("generate", "从数据库的表模型生成控制器和 views 代码", &generateCommand{}, nil)
 	command.On("models", "从数据库的表模型生成 models 代码", &GenerateModelsCommand{}, nil)
 	command.On("controller", "从数据库的表模型生成控制器代码", &GenerateControllerCommand{}, nil)
@@ -105,10 +111,10 @@ func (cmd *generateCommand) Run(args []string) error {
 		return e
 	}
 
-	var controller = GenerateControllerCommand{generateBase: cmd.generateBase}
-	var views = GenerateViewCommand{generateBase: cmd.generateBase}
-
-	controller.Run(args)
-	views.Run(args)
+	// var controller = GenerateControllerCommand{generateBase: cmd.generateBase}
+	// var views = GenerateViewCommand{generateBase: cmd.generateBase}
+	//
+	// controller.Run(args)
+	// views.Run(args)
 	return nil
 }
