@@ -302,7 +302,7 @@ func (model *ColumnModel) NEQ(value interface{}) Expr {
 	return column.NEQ(value)
 }
 
-func (model *ColumnModel) EXISTS(value interface{}) Expr {
+func (model *ColumnModel) EXISTS() Expr {
 	column := &columnModel{origin: model}
 	return column.EXISTS(value)
 }
@@ -442,6 +442,22 @@ func (model Expr) ToSql() (string, []interface{}, error) {
 		return buf.String(), nil, nil
 	}
 	return model.Column.Name() + " " + model.Operator + " ? ", []interface{}{model.Value}, nil
+}
+
+type existsExpr struct {
+	sqlizer squirrel.Sqlizer
+}
+
+func (exists existsExpr) ToSql() (string, []interface{}, error) {
+	subSqlstr, subArgs, e := exists.sqlizer.ToSql()
+	if nil != e {
+		return "", nil, e
+	}
+	return "EXISTS (" + subSqlstr + " )", subArgs, nil
+}
+
+func EXISTS(sqlizer squirrel.Sqlizer) *existsExpr {
+	return &existsExpr{sqlizer: sqlizer}
 }
 
 func JoinObjects(buf *bytes.Buffer, value interface{}) {
