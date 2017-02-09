@@ -1,0 +1,5 @@
+
+type [[.class.Name]] struct {[[range $field := .class.Fields ]]
+  [[goify $field.Name  true]] [[gotype $field.Type]] `json:"[[underscore $field.Name]][[if omitempty $field]],omitempty[[end]]"`
+[[end]]}
+

@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -20,8 +23,9 @@ func (cmd *versionCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 	return fs
 }
 
-func (cmd *versionCommand) Run(args []string) {
+func (cmd *versionCommand) Run(args []string) error {
 	fmt.Println(filepath.Base(os.Args[0]), "1.0")
+	return nil
 }
 
 type embedeCommand struct {
@@ -34,44 +38,58 @@ func (cmd *embedeCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 	return fs
 }
 
-func (cmd *embedeCommand) Run(args []string) {
-	if len(args) != 2 {
-		fmt.Println("argument error.")
-		return
+func (cmd *embedeCommand) Run(args []string) error {
+	if len(args) != 1 {
+		return errors.New("argument error")
 	}
 	out, e := os.OpenFile(args[0], os.O_TRUNC|os.O_RDWR|os.O_CREATE, 0)
 	if nil != e {
-		fmt.Println(e)
-		return
+		return e
 	}
 	defer out.Close()
-	in, e := os.OpenFile(args[1], os.O_RDONLY, 0)
-	if nil != e {
-		fmt.Println(e)
-		return
-	}
-	defer in.Close()
-
 	out.WriteString(`package main
+`)
 
-var embede_text = `)
-	out.WriteString("`")
-	if _, e = io.Copy(out, in); nil != e {
-		fmt.Println(e)
-		return
+	for _, t := range [][2]string{{"embededText", "base.go"},
+		{"structText", "tpl/struct.gohtml"},
+		{"controllerText", "tpl/controller.gohtml"},
+		{"viewEditText", "tpl/views/edit.gohtml"},
+		{"viewFieldsText", "tpl/views/fields.gohtml"},
+		{"viewIndexText", "tpl/views/index.gohtml"},
+		{"viewNewText", "tpl/views/new.gohtml"}} {
+		if e := cmd.copyFile(out, t[0], t[1]); e != nil {
+			return e
+		}
 	}
-	out.WriteString("`")
+	return nil
+}
+
+func (cmd *embedeCommand) copyFile(out io.Writer, name, file string) error {
+	bs, e := ioutil.ReadFile(file)
+	if nil != e {
+		return e
+	}
+
+	io.WriteString(out, `
+
+var `+name+` = `)
+	io.WriteString(out, "`")
+
+	out.Write(bytes.Replace(bs, []byte("`"), []byte("` + \"`\" + `"), -1))
+
+	_, e = io.WriteString(out, "`")
+	return e
 }
 
 func init() {
 	// register version as a subcommand
 	command.On("version", "prints the version", &versionCommand{}, nil)
 	command.On("embede", "", &embedeCommand{}, nil)
+	command.On("embed", "", &embedeCommand{}, nil)
 	command.On("generate", "从数据库的表模型生成控制器和 views 代码", &generateCommand{}, nil)
 	command.On("models", "从数据库的表模型生成 models 代码", &GenerateModelsCommand{}, nil)
 	command.On("controller", "从数据库的表模型生成控制器代码", &GenerateControllerCommand{}, nil)
 	command.On("views", "从数据库的表模型生成 Views 代码", &GenerateViewCommand{}, nil)
-
 }
 
 func main() {
@@ -84,20 +102,19 @@ type generateCommand struct {
 	generateBase
 }
 
-func (cmd *generateCommand) Run(args []string) {
+func (cmd *generateCommand) Run(args []string) error {
 	if len(args) == 0 {
-		fmt.Println("table name is missing.")
-		return
+		return errors.New("table name is missing.")
 	}
 
 	if e := cmd.init(); nil != e {
-		fmt.Println(e)
-		return
+		return e
 	}
 
-	var controller = GenerateControllerCommand{generateBase: cmd.generateBase}
-	var views = GenerateViewCommand{generateBase: cmd.generateBase}
-
-	controller.Run(args)
-	views.Run(args)
+	// var controller = GenerateControllerCommand{generateBase: cmd.generateBase}
+	// var views = GenerateViewCommand{generateBase: cmd.generateBase}
+	//
+	// controller.Run(args)
+	// views.Run(args)
+	return nil
 }

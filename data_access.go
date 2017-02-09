@@ -5,6 +5,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	_ "github.com/lib/pq"
@@ -64,11 +66,11 @@ type dbBase struct {
 }
 
 func (cmd *dbBase) initFlags(fs *flag.FlagSet) *flag.FlagSet {
-	flag.StringVar(&cmd.dbURL, "db_url", "host=127.0.0.1 port=35432 dbname=tpt user=tpt password=extreme sslmode=disable", "the db url")
-	flag.StringVar(&cmd.dbDrv, "db_drv", "postgres", "the db driver")
-	flag.StringVar(&cmd.dbCatalog, "db_catalog", "tpt", "the db schema")
-	flag.StringVar(&cmd.dbSchema, "db_schema", "public", "the db schema")
-	flag.StringVar(&cmd.dbPrefix, "db_prefix", "tpt_", "the db prefix name")
+	fs.StringVar(&cmd.dbURL, "db_url", "host=127.0.0.1 port=35432 dbname=tpt user=tpt password=extreme sslmode=disable", "the db url")
+	fs.StringVar(&cmd.dbDrv, "db_drv", "postgres", "the db driver")
+	fs.StringVar(&cmd.dbCatalog, "db_catalog", "tpt", "the db schema")
+	fs.StringVar(&cmd.dbSchema, "db_schema", "public", "the db schema")
+	fs.StringVar(&cmd.dbPrefix, "db_prefix", "tpt_", "the db prefix name")
 	return fs
 }
 
@@ -126,7 +128,7 @@ func (cmd *dbBase) GetAllTables() ([]Table, error) {
 		table.ClassName = Typeify(strings.TrimPrefix(table.TableName, cmd.dbPrefix))
 
 		//if "tpt_network_devices" == table.TableName {
-		//	fmt.Println(table.TableName, table.IsCombinedKey, table.PrimaryKey)
+		//  fmt.Println(table.TableName, table.IsCombinedKey, table.PrimaryKey)
 		//}
 		for _, column := range columns {
 			if "created_at" == column.DbName {
@@ -226,7 +228,7 @@ func (cmd *dbBase) getByTable(db *sql.DB, tableCatalog, tableSchema, tableName s
 				column.IsForeignKey = isForeignKey
 			}
 			//if "id" == column.DbName {
-			//	fmt.Println(tableName, column.DbName, isForeignKey)
+			//  fmt.Println(tableName, column.DbName, isForeignKey)
 			//}
 		}
 		if isSequence.Valid {
@@ -262,4 +264,36 @@ func (cmd *dbBase) getByTable(db *sql.DB, tableCatalog, tableSchema, tableName s
 		columns = append(columns, column)
 	}
 	return columns, rows.Err()
+}
+
+// GenerateControllerCommand - 生成控制器
+type generateBase struct {
+	dbBase
+
+	root     string
+	override bool
+}
+
+// Flags - 申明参数
+func (cmd *generateBase) Flags(fs *flag.FlagSet) *flag.FlagSet {
+	fs = cmd.initFlags(fs)
+	fs.StringVar(&cmd.root, "root", "", "the root directory")
+	fs.BoolVar(&cmd.override, "override", false, "")
+	return fs
+}
+
+func (cmd *generateBase) init() error {
+	if "" == cmd.root {
+		for _, s := range []string{"conf/routes", "../conf/routes", "../../conf/routes", "../../conf/routes"} {
+			if st, e := os.Stat(s); nil == e && nil != st && !st.IsDir() {
+				cmd.root, _ = filepath.Abs(filepath.Join(s, "..", ".."))
+				break
+			}
+		}
+
+		if "" == cmd.root {
+			return errors.New("root directory isn't found")
+		}
+	}
+	return nil
 }

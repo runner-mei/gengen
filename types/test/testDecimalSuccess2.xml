@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mdbs:classDefinitions lastModified="2009-12-23T12:12:12" xmlns:mdbs="http://schemas.hengwei.com.cn/tpt/1/metricDefinitions" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.hengwei.com.cn/tpt/1/metricDefinitions metricDefinitions.xsd">
+	<mdbs:class name="Person" displayName="人员" >
+		<mdbs:property name="Age" displayName="cc">
+			<mdbs:restriction type="decimal">
+				<mdbs:defaultValue>3.0<mdbs:defaultValue>
+				<mdbs:minValue>3.0</mdbs:minValue>
+				<mdbs:maxValue>5.0</mdbs:maxValue>
+			</mdbs:restriction>
+		</mdbs:property>
+	</mdbs:class>		
+</mdbs:classDefinitions>

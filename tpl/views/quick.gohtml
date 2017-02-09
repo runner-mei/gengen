@@ -1,0 +1,33 @@
+<div class="quick-bar">
+    <ul class="quick-actions ">
+        <li>
+            <a href='{{url "[[.controllerName]].New"}}'  class="grid-action" method="" mode="*" confirm="" client="false" target="_self">
+                <i class="icon-add"></i>添加
+            </a>
+        </li>
+        <li>
+            <a  href="#"  class="grid-action update" method="" mode="1" confirm="" client="false" target="_self">
+                <i class="icon-edit"></i>编辑
+            </a>
+        </li>
+        <li>
+            <a href="#"  class="grid-action delete" mode="+" target="_self">
+                <i class="icon-delete"></i> 删除
+            </a>
+        </li>
+    </ul>
+    <ul class="quick-actions ">
+        <form action="" method="get" class="form-action" id="[[underscore .controllerName]]-quick-form" >
+            <li>
+                <label>
+                    <span>名称</span><input type="text" name="name">
+                </label>
+            </li>
+            <li>
+                <a href="javascript:document.getElementById('[[underscore .controllerName]]-quick-form').submit()" class="grid-action" method="" mode="*">
+                    <i class="icon-search"></i> 查询
+                </a>
+            </li>
+        </form>
+    </ul>
+</div>

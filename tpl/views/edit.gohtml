@@ -1,0 +1,25 @@
+{{set . "title" "编辑[[.controllerName]]"}}
+{{append . "moreStyles" "/public/css/form.css"}}
+{{append . "moreScripts" "/public/js/[[underscore .controllerName]].js"}}
+{{template "layouts/header.html" .}}
+<div class="widget stacked">
+    <div class="widget-header">
+        <h3>编辑[[.controllerName]]</h3>
+    </div>
+    <div class="widget-content">
+        <form action="{{url "[[.controllerName]].Update" }}" method="POST" class="form-horizontal" id="insert">
+        <input type="hidden" name="_method" value="PUT">
+        {{with $field := field "{{[[camelizeDownFirst .class.Name]]}}.Id" .}}
+        <input type="hidden" name="{{$field.Name}}" value="{{or $field.Flash $field.Value}}">
+        {{end}}
+        {{template "[[.controllerName]]/edit_fields.html" .}}
+        <div class="controls-group">
+            <div class="controls controls-row">
+                <button type="submit" class="btn btn-info controls">修改</button>
+                <button type="submit" class="btn btn-info controls">取消</button>
+            </div>
+        </div>
+        </form>
+    </div>
+</div>
+{{template "layouts/footer.html" .}}

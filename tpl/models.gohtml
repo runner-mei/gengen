@@ -1,0 +1,39 @@
+
+type [[.class.Name]] struct {[[range $field := .class.Fields ]]
+  [[goify $field.Name  true]] [[gotype $field.Type]] `json:"[[underscore $field.Name]][[if omitempty $field]],omitempty[[end]]"`
+[[end]]}
+
+func (self *[[.class.Name]]) CreateIt(db squirrel.BaseRunner) (int64, error) {
+  return [[.class.Name]]Model.CreateIt(db, self)
+}
+
+func (self *[[.class.Name]]) UpdateIt(db squirrel.BaseRunner) error {
+  return [[.class.Name]]Model.UpdateIt(db, self)
+}
+
+func (self *[[.class.Name]]) DeleteIt(db squirrel.BaseRunner) error { 
+  return [[.class.Name]]Model.DeleteIt(db, self)
+}
+
+type [[camelizeDownFirst .class.Name]]Model struct{
+}
+
+func (self *[[camelizeDownFirst .class.Name]]Model) QueryRowWith(db squirrel.QueryRower) (*[[.class.Name]], error){
+}
+
+func (self *[[camelizeDownFirst .class.Name]]Model) QueryWith(db squirrel.Queryer, builder squirrel.SelectBuilder) ([]*[[.class.Name]], error){
+}
+
+func (self *[[camelizeDownFirst .class.Name]]Model) CreateIt(db squirrel.BaseRunner, v *[[.class.Name]]) (int64, error) {
+}
+
+func (self *[[camelizeDownFirst .class.Name]]Model) UpdateIt(db squirrel.BaseRunner, v *[[.class.Name]]) error {
+}
+
+func (self *[[camelizeDownFirst .class.Name]]Model) DeleteIt(db squirrel.BaseRunner, v *[[.class.Name]]) error { 
+}
+
+func (self *[[camelizeDownFirst .class.Name]]Model) DeleteByID(db squirrel.BaseRunner, key int64) error {
+}
+
+var [[.class.Name]]Model = [[camelizeDownFirst .class.Name]]Model{}

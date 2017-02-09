@@ -1,0 +1,2 @@
+[[range $column := .class.Fields]]{{text_field . "[[camelizeDownFirst .class.Name]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
+[[end]]
