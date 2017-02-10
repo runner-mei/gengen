@@ -60,7 +60,7 @@ func (cmd *baseCommand) loadFile(nm string) ([]byte, error) {
 		return nil, errors.New("load template fail, " + e.Error())
 	}
 
-	return []byte(structText), nil
+	return textDefault(nm), nil
 }
 
 func (cmd *baseCommand) newTemplate(name string, funcs template.FuncMap) (*template.Template, error) {
@@ -161,13 +161,8 @@ func (cmd *baseCommand) run(args []string, cb func(table *types.TableDefinition)
 	return nil
 }
 
-func (cmd *baseCommand) executeTempate(override bool, name string, funcs template.FuncMap, params interface{}, fname string) error {
+func (cmd *baseCommand) executeTempate(override bool, names []string, funcs template.FuncMap, params interface{}, fname string) error {
 	var out *os.File
-
-	tpl, err := cmd.newTemplate(name, funcs)
-	if nil != err {
-		return err
-	}
 
 	if !override {
 		out, err = os.OpenFile(fname, os.O_CREATE|os.O_EXCL, 0666)
@@ -179,10 +174,17 @@ func (cmd *baseCommand) executeTempate(override bool, name string, funcs templat
 	}
 	defer out.Close()
 
-	if err := tpl.Execute(out, params); err != nil {
-		out.Close()
-		os.Remove(fname)
-		return err
+	for _, name := range names {
+		tpl, err := cmd.newTemplate(name, funcs)
+		if nil != err {
+			return err
+		}
+
+		if err := tpl.Execute(out, params); err != nil {
+			out.Close()
+			os.Remove(fname)
+			return err
+		}
 	}
 	return nil
 }

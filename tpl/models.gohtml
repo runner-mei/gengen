@@ -1,8 +1,4 @@
 
-type [[.class.Name]] struct {[[range $field := .class.Fields ]]
-  [[goify $field.Name  true]] [[gotype $field.Type]] `json:"[[underscore $field.Name]][[if omitempty $field]],omitempty[[end]]"`
-[[end]]}
-
 func (self *[[.class.Name]]) CreateIt(db squirrel.BaseRunner) (int64, error) {
   return [[.class.Name]]Model.CreateIt(db, self)
 }

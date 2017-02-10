@@ -50,17 +50,36 @@ func (cmd *embedeCommand) Run(args []string) error {
 	out.WriteString(`package main
 `)
 
-	for _, t := range [][2]string{{"embededText", "base.go"},
-		{"structText", "tpl/struct.gohtml"},
-		{"controllerText", "tpl/controller.gohtml"},
-		{"viewEditText", "tpl/views/edit.gohtml"},
-		{"viewFieldsText", "tpl/views/fields.gohtml"},
-		{"viewIndexText", "tpl/views/index.gohtml"},
-		{"viewNewText", "tpl/views/new.gohtml"}} {
-		if e := cmd.copyFile(out, t[0], t[1]); e != nil {
+	templates := [][3]string{{"base", "embededText", "base.go"},
+		{"ns", "ns", "tpl/ns.gohtml"},
+		{"handler", "handler", "tpl/handler.gohtml"},
+		{"struct", "structText", "tpl/struct.gohtml"},
+		{"controller", "controllerText", "tpl/controller.gohtml"},
+		{"views/edit", "viewEditText", "tpl/views/edit.gohtml"},
+		{"views/fields", "viewFieldsText", "tpl/views/fields.gohtml"},
+		{"views/index", "viewIndexText", "tpl/views/index.gohtml"},
+		{"views/new", "viewNewText", "tpl/views/new.gohtml"}}
+	for _, t := range templates {
+		if e := cmd.copyFile(out, t[1], t[2]); e != nil {
 			return e
 		}
 	}
+
+	out.Write(`
+func textDefault(nm string) []byte {
+	switch nm {`)
+	for _, t := range templates {
+		out.Write(`
+  case "` + t[0] + `":
+    return []byte(` + t[1] + `)`)
+	}
+	out.Write(`
+	default:
+		panic(errors.New("template '" + nm + "' isn't default template."))
+	}
+}
+`)
+
 	return nil
 }
 
@@ -86,6 +105,7 @@ func init() {
 	command.On("version", "prints the version", &versionCommand{}, nil)
 	command.On("embede", "", &embedeCommand{}, nil)
 	command.On("embed", "", &embedeCommand{}, nil)
+	command.On("embeded", "", &embedeCommand{}, nil)
 	command.On("generate", "从数据库的表模型生成控制器和 views 代码", &generateCommand{}, nil)
 	command.On("models", "从数据库的表模型生成 models 代码", &GenerateModelsCommand{}, nil)
 	command.On("controller", "从数据库的表模型生成控制器代码", &GenerateControllerCommand{}, nil)
@@ -99,7 +119,7 @@ func main() {
 }
 
 type generateCommand struct {
-	generateBase
+	//generateBase
 }
 
 func (cmd *generateCommand) Run(args []string) error {
@@ -107,9 +127,9 @@ func (cmd *generateCommand) Run(args []string) error {
 		return errors.New("table name is missing.")
 	}
 
-	if e := cmd.init(); nil != e {
-		return e
-	}
+	// if e := cmd.init(); nil != e {
+	// 	return e
+	// }
 
 	// var controller = GenerateControllerCommand{generateBase: cmd.generateBase}
 	// var views = GenerateViewCommand{generateBase: cmd.generateBase}
