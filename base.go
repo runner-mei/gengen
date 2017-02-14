@@ -307,7 +307,7 @@ func (model *ColumnModel) NEQ(value interface{}) Expr {
 	return column.NEQ(value)
 }
 
-func (model *ColumnModel) EXISTS() Expr {
+func (model *ColumnModel) EXISTS(value interface{}) Expr {
 	column := &columnModel{origin: model}
 	return column.EXISTS(value)
 }

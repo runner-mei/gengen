@@ -163,6 +163,7 @@ func (cmd *baseCommand) run(args []string, cb func(table *types.TableDefinition)
 
 func (cmd *baseCommand) executeTempate(override bool, names []string, funcs template.FuncMap, params interface{}, fname string) error {
 	var out *os.File
+	var err error
 
 	if !override {
 		out, err = os.OpenFile(fname, os.O_CREATE|os.O_EXCL, 0666)

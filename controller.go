@@ -20,7 +20,7 @@ func (cmd *GenerateControllerCommand) Run(args []string) error {
 			"controllerName": types.Pluralize(cls.Name),
 			"class":          cls}
 
-		return cmd.executeTempate(cmd.override, "controller", funcs, params,
+		return cmd.executeTempate(cmd.override, []string{"controller"}, funcs, params,
 			filepath.Join(cmd.output, cls.UnderscoreName+".go"))
 	})
 }

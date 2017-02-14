@@ -14,12 +14,12 @@ import (
 )
 
 type versionCommand struct {
-	flagVerbose *bool
+	flagVerbose bool
 }
 
 func (cmd *versionCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 	// define subcommand's flags
-	cmd.flagVerbose = fs.Bool("v", false, "provides verbose output")
+	fs.BoolVar(&cmd.flagVerbose, "v", false, "provides verbose output")
 	return fs
 }
 
@@ -65,15 +65,16 @@ func (cmd *embedeCommand) Run(args []string) error {
 		}
 	}
 
-	out.Write(`
+	out.WriteString(`
+
 func textDefault(nm string) []byte {
 	switch nm {`)
 	for _, t := range templates {
-		out.Write(`
+		out.WriteString(`
   case "` + t[0] + `":
     return []byte(` + t[1] + `)`)
 	}
-	out.Write(`
+	out.WriteString(`
 	default:
 		panic(errors.New("template '" + nm + "' isn't default template."))
 	}
@@ -106,7 +107,7 @@ func init() {
 	command.On("embede", "", &embedeCommand{}, nil)
 	command.On("embed", "", &embedeCommand{}, nil)
 	command.On("embeded", "", &embedeCommand{}, nil)
-	command.On("generate", "从数据库的表模型生成控制器和 views 代码", &generateCommand{}, nil)
+	//command.On("generate", "从数据库的表模型生成控制器和 views 代码", &generateCommand{}, nil)
 	command.On("models", "从数据库的表模型生成 models 代码", &GenerateModelsCommand{}, nil)
 	command.On("controller", "从数据库的表模型生成控制器代码", &GenerateControllerCommand{}, nil)
 	command.On("views", "从数据库的表模型生成 Views 代码", &GenerateViewCommand{}, nil)

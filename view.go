@@ -23,25 +23,25 @@ func (cmd *GenerateViewCommand) genrateView(cls *types.TableDefinition) error {
 		"class":          cls}
 	funcs := template.FuncMap{}
 
-	err := cmd.executeTempate(cmd.override, "views/index", funcs, params, filepath.Join(cmd.output, "index.html"))
+	err := cmd.executeTempate(cmd.override, []string{"views/index"}, funcs, params, filepath.Join(cmd.output, "index.html"))
 	if err != nil {
 		return err
 	}
 
-	err = cmd.executeTempate(cmd.override, "views/edit", funcs, params, filepath.Join(cmd.output, "edit.html"))
+	err = cmd.executeTempate(cmd.override, []string{"views/edit"}, funcs, params, filepath.Join(cmd.output, "edit.html"))
 	if err != nil {
 		os.Remove(filepath.Join(cmd.output, "index.html"))
 		return err
 	}
 
-	err = cmd.executeTempate(cmd.override, "views/fields", funcs, params, filepath.Join(cmd.output, "edit_fields.html"))
+	err = cmd.executeTempate(cmd.override, []string{"views/fields"}, funcs, params, filepath.Join(cmd.output, "edit_fields.html"))
 	if err != nil {
 		os.Remove(filepath.Join(cmd.output, "index.html"))
 		os.Remove(filepath.Join(cmd.output, "edit.html"))
 		return err
 	}
 
-	err = cmd.executeTempate(cmd.override, "views/new", funcs, params, filepath.Join(cmd.output, "new.html"))
+	err = cmd.executeTempate(cmd.override, []string{"views/new"}, funcs, params, filepath.Join(cmd.output, "new.html"))
 	if err != nil {
 		os.Remove(filepath.Join(cmd.output, "index.html"))
 		os.Remove(filepath.Join(cmd.output, "edit.html"))
@@ -49,7 +49,7 @@ func (cmd *GenerateViewCommand) genrateView(cls *types.TableDefinition) error {
 		return err
 	}
 
-	err = cmd.executeTempate(cmd.override, "views/quick", funcs, params, filepath.Join(cmd.output, "quick-bar.html"))
+	err = cmd.executeTempate(cmd.override, []string{"views/quick"}, funcs, params, filepath.Join(cmd.output, "quick-bar.html"))
 	if err != nil {
 		os.Remove(filepath.Join(cmd.output, "index.html"))
 		os.Remove(filepath.Join(cmd.output, "edit.html"))

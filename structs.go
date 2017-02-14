@@ -23,6 +23,6 @@ func (cmd *GenerateStructCommand) generateStruct(cls *types.TableDefinition) err
 	params := map[string]interface{}{"namespace": cmd.ns,
 		"class": cls}
 
-	return cmd.executeTempate(cmd.override, "struct", funcs, params,
+	return cmd.executeTempate(cmd.override, []string{"struct"}, funcs, params,
 		filepath.Join(cmd.output, cls.UnderscoreName+".go"))
 }

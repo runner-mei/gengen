@@ -3,8 +3,8 @@ package main
 import (
 	"cn/com/hengwei/commons/types"
 	"flag"
-	"html/template"
 	"path/filepath"
+	"text/template"
 )
 
 // HandlerCommand - 生成控制器

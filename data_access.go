@@ -106,6 +106,7 @@ func (cmd *dbBase) GetAllTables() ([]Table, error) {
 	}
 	defer rows.Close()
 
+	//fmt.Println(queryString)
 	var tables []Table
 	for rows.Next() {
 		var table Table
@@ -113,6 +114,7 @@ func (cmd *dbBase) GetAllTables() ([]Table, error) {
 		if e := rows.Scan(&table.TableName, &table.Schema, &tableType); nil != e {
 			return nil, e
 		}
+		//fmt.Println(table.TableName)
 
 		if "view" == strings.ToLower(tableType) {
 			table.IsView = true
@@ -254,12 +256,16 @@ func (cmd *dbBase) getByTable(db *sql.DB, tableCatalog, tableSchema, tableName s
 		}
 
 		column.GoName = CamelCase(column.DbName)
+		if column.GoName == "Type" {
+			column.GoName = "Typ"
+		}
+
 		if "id" == column.DbName && "int4" == column.DbType {
 			column.GoType = "int64"
 		} else if column.IsForeignKey {
 			column.GoType = "int64"
 		} else {
-			column.GoType = ToGoTypeFromDbType(tableName, column.DbType)
+			column.GoType = toGoTypeFromDbType(tableName, column.DbType)
 		}
 		columns = append(columns, column)
 	}
