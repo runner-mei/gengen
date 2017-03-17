@@ -1,7 +1,6 @@
 package main
 
 import (
-	"cn/com/hengwei/commons/types"
 	"errors"
 	"flag"
 	"io/ioutil"
@@ -9,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"text/template"
+
+	"github.com/runner-mei/gengen/types"
 )
 
 // GenerateModelsCommand - 生成数据库模型代码
@@ -18,6 +19,14 @@ type baseCommand struct {
 	output   string
 	theme    string
 	override bool
+}
+
+func (cmd *baseCommand) CopyFrom(b *baseCommand) {
+	cmd.ns = b.ns
+	cmd.root = b.root
+	cmd.output = b.output
+	cmd.theme = b.theme
+	cmd.override = b.override
 }
 
 // Flags - 申明参数
@@ -30,13 +39,13 @@ func (cmd *baseCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 	return fs
 }
 
-func (cmd *baseCommand) loadTables() (*types.TableDefinitions, error) {
+func (cmd *baseCommand) loadTables() ([]*types.ClassSpec, error) {
 	files, err := filepath.Glob(filepath.Join(cmd.root, "*"))
 	if err != nil {
-		return nil, err
+		return nil, errors.New("search root directory fail, " + err.Error())
 	}
 
-	return types.LoadFiles(files)
+	return types.LoadYAMLFiles(files)
 }
 
 func (cmd *baseCommand) loadFile(nm string) ([]byte, error) {
@@ -71,7 +80,7 @@ func (cmd *baseCommand) newTemplate(name string, funcs template.FuncMap) (*templ
 		"singularize":       types.Singularize,
 		"pluralize":         types.Pluralize,
 		"camelizeDownFirst": types.CamelizeDownFirst,
-		"omitempty": func(t *types.PropertyDefinition) bool {
+		"omitempty": func(t *types.FieldSpec) bool {
 			return !t.IsRequired
 		}}
 
@@ -84,21 +93,50 @@ func (cmd *baseCommand) newTemplate(name string, funcs template.FuncMap) (*templ
 }
 
 // Run - 生成数据库模型代码
-func (cmd *baseCommand) run(args []string, cb func(table *types.TableDefinition) error) error {
+func (cmd *baseCommand) runAll(args []string, cb func(tables []*types.ClassSpec) error) error {
 	// if e := cmd.init(); e != nil {
 	//  return e
 	// }
 
-	if st, err := os.Stat(cmd.output); err != nil {
-		if os.IsNotExist(err) {
-			return err
-		}
+	if cmd.output != "" {
+		if st, err := os.Stat(cmd.output); err != nil {
+			if os.IsNotExist(err) {
+				return err
+			}
 
-		if err := os.MkdirAll(cmd.output, 0); err != nil {
-			return err
+			if err := os.MkdirAll(cmd.output, 0); err != nil {
+				return err
+			}
+		} else if !st.IsDir() {
+			return errors.New(("'" + cmd.output + "' isn't directory."))
 		}
-	} else if !st.IsDir() {
-		return errors.New(("'" + cmd.output + "' isn't directory."))
+	}
+
+	tables, e := cmd.loadTables()
+	if nil != e {
+		return e
+	}
+	return cb(tables)
+}
+
+// Run - 生成数据库模型代码
+func (cmd *baseCommand) run(args []string, cb func(table *types.ClassSpec) error) error {
+	// if e := cmd.init(); e != nil {
+	//  return e
+	// }
+
+	if cmd.output != "" {
+		if st, err := os.Stat(cmd.output); err != nil {
+			if !os.IsNotExist(err) {
+				return err
+			}
+
+			if err := os.MkdirAll(cmd.output, 0); err != nil {
+				return err
+			}
+		} else if !st.IsDir() {
+			return errors.New(("'" + cmd.output + "' isn't directory."))
+		}
 	}
 
 	tables, e := cmd.loadTables()
@@ -108,11 +146,11 @@ func (cmd *baseCommand) run(args []string, cb func(table *types.TableDefinition)
 	if len(args) > 0 {
 		for _, name := range args {
 			log.Println("[GEN] ", name)
-			table := tables.Find(name)
-			if table == nil {
-				table = tables.FindByUnderscoreName(name)
-				if table == nil {
-					table = tables.FindByTableName(name)
+			var table *types.ClassSpec
+			for _, cs := range tables {
+				if cs.Name == name {
+					table = cs
+					break
 				}
 			}
 
@@ -144,7 +182,7 @@ func (cmd *baseCommand) run(args []string, cb func(table *types.TableDefinition)
 			}
 		}
 	} else {
-		for _, table := range tables.All() {
+		for _, table := range tables {
 			log.Println("[GEN] ", table.Name)
 
 			// f, e := os.Create(filepath.Join(cmd.output, table.UnderscoreName+"_gen.go"))
@@ -164,6 +202,15 @@ func (cmd *baseCommand) run(args []string, cb func(table *types.TableDefinition)
 func (cmd *baseCommand) executeTempate(override bool, names []string, funcs template.FuncMap, params interface{}, fname string) error {
 	var out *os.File
 	var err error
+
+	dirname := filepath.Dir(fname)
+	if dirname != "" {
+		if err = os.MkdirAll(dirname, 0666); err != nil {
+			if !os.IsExist(err) {
+				return err
+			}
+		}
+	}
 
 	if !override {
 		out, err = os.OpenFile(fname, os.O_CREATE|os.O_EXCL, 0666)

@@ -1,0 +1,34 @@
+$(function () {
+    var urlPrefix = $("#urlPrefix").val();
+    $(".delete").on("click", function () {
+        var val = [];
+        $("#row-checker:checked").each(function (i) {
+            val[i] = parseInt($(this).attr("key"));
+        });
+
+        if (!confirm("确认删除选定信息？")){
+            return false
+        }
+
+        $.ajax({
+            url: urlPrefix + "/[[pluralize .class.Name | underscore]]",
+            type: "POST",
+            data: $.param({id_list: val, _method: "DELETE"}),
+            dataType: "text",
+            error: function (resp) {
+                alert(resp.responseText)
+            },
+            success: function (resp) {
+                location.reload();
+            }
+        });
+        return false
+    });
+
+    $(".update").on("click", function () {
+        var elements = $("#row-checker:checked");
+        if (elements.length == 1) {
+            location.href = elements.first().attr("url");
+        }
+    });
+});

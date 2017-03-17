@@ -1,26 +1,40 @@
 package main
 
 import (
-	"cn/com/hengwei/commons/types"
+	"flag"
 	"path/filepath"
 	"text/template"
+
+	"github.com/runner-mei/gengen/types"
 )
 
 // GenerateControllerCommand - 生成控制器
 type GenerateControllerCommand struct {
 	baseCommand
+	controller  string
+	projectPath string
+}
+
+// Flags - 申明参数
+func (cmd *GenerateControllerCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
+	fs.StringVar(&cmd.controller, "controller", "", "the base controller name")
+	fs.StringVar(&cmd.projectPath, "projectPath", "", "the project path")
+	return cmd.baseCommand.Flags(fs)
 }
 
 // Run - 生成代码
 func (cmd *GenerateControllerCommand) Run(args []string) error {
-	return cmd.run(args, func(cls *types.TableDefinition) error {
+	return cmd.run(args, func(cls *types.ClassSpec) error {
 		funcs := template.FuncMap{}
 
 		params := map[string]interface{}{"namespace": cmd.ns,
-			"controllerName": types.Pluralize(cls.Name),
+			"baseController": cmd.controller,
+			"projectPath":    cmd.projectPath,
+			"controllerName": Pluralize(cls.Name),
+			"modelName":      Pluralize(cls.Name),
 			"class":          cls}
 
-		return cmd.executeTempate(cmd.override, []string{"controller"}, funcs, params,
-			filepath.Join(cmd.output, cls.UnderscoreName+".go"))
+		return cmd.executeTempate(cmd.override, []string{"ns", "controller"}, funcs, params,
+			filepath.Join(cmd.output, Underscore(Pluralize(cls.Name))+".go"))
 	})
 }

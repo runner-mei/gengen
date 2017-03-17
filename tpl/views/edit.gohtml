@@ -1,7 +1,7 @@
 {{set . "title" "编辑[[.controllerName]]"}}
 {{append . "moreStyles" "/public/css/form.css"}}
-{{append . "moreScripts" "/public/js/[[underscore .controllerName]].js"}}
-{{template "layouts/header.html" .}}
+{{append . "moreScripts" "/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
+{{template "[[if .layouts]][[.layouts]][[end]]header.html" .}}
 <div class="widget stacked">
     <div class="widget-header">
         <h3>编辑[[.controllerName]]</h3>
@@ -9,9 +9,7 @@
     <div class="widget-content">
         <form action="{{url "[[.controllerName]].Update" }}" method="POST" class="form-horizontal" id="insert">
         <input type="hidden" name="_method" value="PUT">
-        {{with $field := field "{{[[camelizeDownFirst .class.Name]]}}.Id" .}}
-        <input type="hidden" name="{{$field.Name}}" value="{{or $field.Flash $field.Value}}">
-        {{end}}
+        {{with $field := field "[[camelizeDownFirst .class.Name]].ID" .}}<input type="hidden" name="{{$field.Name}}" value="{{if $field.Flash}}flash={{$field.Flash}}{{else}}value={{$field.Value}}{{end}}">{{end}}
         {{template "[[.controllerName]]/edit_fields.html" .}}
         <div class="controls-group">
             <div class="controls controls-row">
@@ -22,4 +20,4 @@
         </form>
     </div>
 </div>
-{{template "layouts/footer.html" .}}
+{{template "[[if .layouts]][[.layouts]][[end]]footer.html" .}}

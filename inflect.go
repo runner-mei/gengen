@@ -1,6 +1,6 @@
 package main
 
-import "cn/com/hengwei/commons/types"
+import "github.com/runner-mei/gengen/types"
 
 func CamelCase(name string) string {
 	return types.CamelCase(name)

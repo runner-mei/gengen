@@ -1,5 +1,30 @@
 
 type [[.class.Name]] struct {[[range $field := .class.Fields ]]
-  [[goify $field.Name  true]] [[gotype $field.Type]] `json:"[[underscore $field.Name]][[if omitempty $field]],omitempty[[end]]"`
-[[end]]}
+  [[goify $field.Name  true]] [[gotype $field.Type]] `json:"[[underscore $field.Name]][[if omitempty $field]],omitempty[[end]]" xorm:"[[underscore $field.Name]][[if eq $field.Name "id"]],pk,autoincr[[else if eq $field.Name "created_at"]],created[[else if eq $field.Name "updated_at"]],updated[[end]][[if $field.IsUniquely]][[if ne $field.Name "id"]],unique[[end]][[end]][[if $field.DefaultValue]],default('[[$field.DefaultValue]]')[[end]]"`[[end]]
+}
 
+
+func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) TableName() string {
+  return "[[if .class.Table]][[.class.Table]][[else]][[pluralize .class.Name | underscore]][[end]]"
+}
+
+func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) Validate(validation *revel.Validation) bool {[[$var := camelizeDownFirst .class.Name]]
+[[range $column := .class.Fields]]
+[[if ne $column.Name "id"]][[if $column.IsRequired]]
+  validation.Required([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
+  [[else if $column.Restrictions]][[if $column.Restrictions.MinLength]]
+             validation.MinSize([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MinLength]]).Key("[[$var]].[[goify $column.Name true]]")
+        [[end]][[if $column.Restrictions.MaxLength]]
+             validation.MaxSize([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MaxLength]]).Key("[[$var]].[[goify $column.Name true]]")
+        [[end]][[if $column.Restrictions.Length]]
+             validation.Length([[$var]].[[goify $column.Name true]], [[$column.Restrictions.Length]]).Key("[[$var]].[[goify $column.Name true]]")
+        [[end]][[if $column.Restrictions.MaxValue]][[if $column.Restrictions.MinValue]]
+             validation.Range([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MinValue]], [[$column.Restrictions.MaxValue]]).Key("[[$var]].[[goify $column.Name true]]")
+          [[else]]
+             validation.Max([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MaxValue]]).Key("[[$var]].[[goify $column.Name true]]")
+        [[end]][[else if $column.Restrictions.MinValue]]
+             validation.Min([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MinValue]]).Key("[[$var]].[[goify $column.Name true]]")
+        [[end]][[end]]
+[[end]][[end]]
+  return validation.HasErrors()
+}

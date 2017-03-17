@@ -1,2 +1,6 @@
-[[range $column := .class.Fields]]{{text_field . "[[camelizeDownFirst .class.Name]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
-[[end]]
+[[define "lengthLimit"]][[end]][[$instaneName := camelizeDownFirst .class.Name]] [[range $column := .class.Fields]][[if isID $column]][[else if eq $column.Type "string" ]][[if isClob $column ]]{{textarea_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | [[template "lengthLimit" $column]] render}}
+[[else]]{{text_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
+[[end]][[else if eq $column.Type "integer" "number" "biginteger" ]]{{number_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
+[[else if eq $column.Type "boolean" "bool" ]]{{checkbox_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
+[[else if eq $column.Type "password" ]]{{password_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
+[[else if editDisabled $column]][[end]][[end]]

@@ -58,7 +58,10 @@ func (cmd *embedeCommand) Run(args []string) error {
 		{"views/edit", "viewEditText", "tpl/views/edit.gohtml"},
 		{"views/fields", "viewFieldsText", "tpl/views/fields.gohtml"},
 		{"views/index", "viewIndexText", "tpl/views/index.gohtml"},
-		{"views/new", "viewNewText", "tpl/views/new.gohtml"}}
+		{"views/new", "viewNewText", "tpl/views/new.gohtml"},
+		{"views/quick", "viewQuickText", "tpl/views/quick.gohtml"},
+		{"views/js", "viewJsText", "tpl/views/js.gohtml"},
+		{"db", "dbText", "tpl/db.gohtml"}}
 	for _, t := range templates {
 		if e := cmd.copyFile(out, t[1], t[2]); e != nil {
 			return e
@@ -111,6 +114,9 @@ func init() {
 	command.On("models", "从数据库的表模型生成 models 代码", &GenerateModelsCommand{}, nil)
 	command.On("controller", "从数据库的表模型生成控制器代码", &GenerateControllerCommand{}, nil)
 	command.On("views", "从数据库的表模型生成 Views 代码", &GenerateViewCommand{}, nil)
+	command.On("struct", "", &GenerateStructCommand{}, nil)
+	command.On("db", "", &GenerateDBObjectCommand{}, nil)
+	command.On("mvc", "", &GenerateMVCCommand{}, nil)
 }
 
 func main() {

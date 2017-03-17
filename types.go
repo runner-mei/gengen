@@ -204,6 +204,6 @@ func fixReserved(w string) string {
 	return w
 }
 
-func GoTypename(t types.TypeDefinition) string {
-	return types.ToGoTypes[t.Name()]
+func GoTypename(t string) string {
+	return types.ToGoTypes[t]
 }

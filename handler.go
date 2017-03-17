@@ -1,10 +1,11 @@
 package main
 
 import (
-	"cn/com/hengwei/commons/types"
 	"flag"
 	"path/filepath"
 	"text/template"
+
+	"github.com/runner-mei/gengen/types"
 )
 
 // HandlerCommand - 生成控制器
@@ -21,7 +22,7 @@ func (cmd *HandlerCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 
 // Run - 生成代码
 func (cmd *HandlerCommand) Run(args []string) error {
-	return cmd.run(args, func(cls *types.TableDefinition) error {
+	return cmd.run(args, func(cls *types.ClassSpec) error {
 		funcs := template.FuncMap{}
 
 		if cmd.handlerPrefix == "" {
@@ -33,6 +34,6 @@ func (cmd *HandlerCommand) Run(args []string) error {
 			"class":         cls}
 
 		return cmd.executeTempate(cmd.override, []string{"ns", "struct", "handler"}, funcs, params,
-			filepath.Join(cmd.output, cls.UnderscoreName+".go"))
+			filepath.Join(cmd.output, Underscore(cls.Name)+".go"))
 	})
 }

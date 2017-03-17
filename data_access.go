@@ -267,9 +267,51 @@ func (cmd *dbBase) getByTable(db *sql.DB, tableCatalog, tableSchema, tableName s
 		} else {
 			column.GoType = toGoTypeFromDbType(tableName, column.DbType)
 		}
+
 		columns = append(columns, column)
 	}
-	return columns, rows.Err()
+
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
+	moveToFirst := func(name string) {
+		for idx := range columns {
+			if columns[idx].DbName == name {
+				if idx == 0 {
+					return
+				}
+				tmp := columns[idx]
+				copy(columns[1:idx], columns[0:idx-1])
+				columns[0] = tmp
+				return
+			}
+		}
+	}
+
+	moveToLast := func(name string) {
+		for idx := range columns {
+			if columns[idx].DbName == name {
+				if idx == len(columns)-1 {
+					return
+				}
+
+				tmp := columns[idx]
+				copy(columns[idx:], columns[idx+1:])
+				columns[len(columns)-1] = tmp
+				return
+			}
+		}
+	}
+
+	moveToFirst("description")
+	moveToFirst("name")
+	moveToFirst("id")
+
+	moveToLast("created_at")
+	moveToLast("updated_at")
+
+	return columns, nil
 }
 
 // GenerateControllerCommand - 生成控制器

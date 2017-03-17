@@ -1,12 +1,13 @@
 package main
 
 import (
-	"cn/com/hengwei/commons/types"
 	"path/filepath"
 	"text/template"
+
+	"github.com/runner-mei/gengen/types"
 )
 
-// GenerateModelsCommand - 生成数据库模型代码
+// GenerateStructCommand - 生成数据库模型代码
 type GenerateStructCommand struct {
 	baseCommand
 }
@@ -16,13 +17,13 @@ func (cmd *GenerateStructCommand) Run(args []string) error {
 	return cmd.run(args, cmd.generateStruct)
 }
 
-func (cmd *GenerateStructCommand) generateStruct(cls *types.TableDefinition) error {
-	funcs := template.FuncMap{"omitempty": func(t *types.PropertyDefinition) bool {
+func (cmd *GenerateStructCommand) generateStruct(cls *types.ClassSpec) error {
+	funcs := template.FuncMap{"omitempty": func(t types.FieldSpec) bool {
 		return !t.IsRequired
 	}}
 	params := map[string]interface{}{"namespace": cmd.ns,
 		"class": cls}
 
-	return cmd.executeTempate(cmd.override, []string{"struct"}, funcs, params,
-		filepath.Join(cmd.output, cls.UnderscoreName+".go"))
+	return cmd.executeTempate(cmd.override, []string{"ns", "struct"}, funcs, params,
+		filepath.Join(cmd.output, Underscore(Pluralize(cls.Name))+".go"))
 }

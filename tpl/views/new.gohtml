@@ -1,7 +1,7 @@
 {{set . "title" "新建[[.controllerName]]"}}
 {{append . "moreStyles" "/public/css/form.css"}}
-{{append . "moreScripts" "/public/js/[[underscore .controllerName]].js"}}
-{{template "layouts/header.html" .}}
+{{append . "moreScripts" "/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
+{{template "[[if .layouts]][[.layouts]][[end]]header.html" .}}
 <div class="widget stacked">
     <div class="widget-header">
         <h3>新建[[.controllerName]]</h3>
@@ -17,4 +17,4 @@
             </form>
     </div>
 </div>
-{{template "layouts/footer.html" .}}
+{{template "[[if .layouts]][[.layouts]][[end]]footer.html" .}}

@@ -1,41 +1,45 @@
 import (
-  "mc/app"
-  "mc/app/libs"
-  "mc/app/models"
-  "mc/app/routes"
+  "[[.projectPath]]/app"
+  "[[.projectPath]]/app/libs"
+  "[[.projectPath]]/app/models"
+  "[[.projectPath]]/app/routes"
 
   "github.com/revel/revel"
+  "upper.io/db.v3"
 )
 
 // [[.controllerName]] - 控制器
 type [[.controllerName]] struct {
-  *revel.Controller
+  [[if .baseController]][[.baseController]][[else]]*revel.Controller[[end]]
 }
 
 // 列出所有记录
-func (c [[.controllerName]]) Index(pageIndex uint64) revel.Result {
-  //var exprs []models.Expr
+func (c [[.controllerName]]) Index(pageIndex int) revel.Result {
+  //var exprs []db.Expr
   //if "" != name {
-  //  exprs = append(exprs, models.[[.class.Name]]Model.C.NAME.LIKE("%"+name+"%"))
+  //  exprs = append(exprs, models.[[.class.Name]]s.C.NAME.LIKE("%"+name+"%"))
   //}
 
-  total, err := models.[[.class.Name]]Model.Count(app.DbRunner) // exprs...)
 
+  total, err := c.Lifecycle.DB.[[.modelName]]().Where().Count()
   if err != nil {
     c.Flash.Error(err.Error())
     c.FlashParams()
     return c.Render(err)
   }
 
-  [[camelizeDownFirst .class.Name]]List, err := models.[[.class.Name]]Model.QueryWith(app.DbRunner, models.[[.class.Name]]Model.Where(). //exprs...).
-    Select().Limit(libs.DEFAULT_SIZE_PER_PAGE).Offset(pageIndex*libs.DEFAULT_SIZE_PER_PAGE))
+  var [[camelizeDownFirst .modelName]] []models.[[.class.Name]]
+  err = c.Lifecycle.DB.[[.modelName]]().Where().
+    Limit(libs.DEFAULT_SIZE_PER_PAGE).
+    Offset(pageIndex * libs.DEFAULT_SIZE_PER_PAGE).
+    All(&[[camelizeDownFirst .modelName]])
   if err != nil {
     c.Flash.Error(err.Error())
     c.FlashParams()
     return c.Render()
   }
   paginator := libs.NewPaginator(c.Request.Request, libs.DEFAULT_SIZE_PER_PAGE, total)
-  return c.Render([[camelizeDownFirst .class.Name]]List, paginator)
+  return c.Render([[camelizeDownFirst .modelName]], paginator)
 }
 
 // 编辑新建记录
@@ -51,7 +55,7 @@ func (c [[.controllerName]]) Create([[camelizeDownFirst .class.Name]] *models.[[
     return c.Redirect(routes.[[.controllerName]].New())
   }
 
-  _, err := [[camelizeDownFirst .class.Name]].CreateIt(app.DbRunner)
+  _, err := c.Lifecycle.DB.[[.modelName]]().Insert([[camelizeDownFirst .class.Name]])
   if err != nil {
     c.Flash.Error(err.Error())
     c.FlashParams()
@@ -59,16 +63,17 @@ func (c [[.controllerName]]) Create([[camelizeDownFirst .class.Name]] *models.[[
   }
 
   c.Flash.Success(revel.Message(c.Request.Locale, "insert.success"))
-  return c.Redirect(routes.[[.controllerName]].Index(0, ""))
+  return c.Redirect(routes.[[.controllerName]].Index(0))
 }
 
 // 编辑指定 id 的记录
 func (c [[.controllerName]]) Edit(id int64) revel.Result {
-  [[camelizeDownFirst .class.Name]], err := models.[[.class.Name]]s.FindByID(app.DbRunner, id)
+  var [[camelizeDownFirst .class.Name]] models.[[.class.Name]]
+  err := c.Lifecycle.DB.[[.modelName]]().Id(id).Get(&[[camelizeDownFirst .class.Name]])
   if err != nil {
     c.Flash.Error(err.Error())
     c.FlashParams()
-    return c.Redirect(routes.[[.controllerName]].Index(0, ""))
+    return c.Redirect(routes.[[.controllerName]].Index(0))
   }
   return c.Render([[camelizeDownFirst .class.Name]])
 }
@@ -79,23 +84,22 @@ func (c [[.controllerName]]) Update([[camelizeDownFirst .class.Name]] *models.[[
   if [[camelizeDownFirst .class.Name]].Validate(c.Validation) {
     c.Validation.Keep()
     c.FlashParams()
-    return c.Redirect(routes.[[.controllerName]].Edit(int64([[camelizeDownFirst .class.Name]].Id)))
+    return c.Redirect(routes.[[.controllerName]].Edit(int64([[camelizeDownFirst .class.Name]].ID)))
   }
 
-  err := [[camelizeDownFirst .class.Name]].UpdateIt(app.DbRunner)
+  err := c.Lifecycle.DB.[[.modelName]]().Id([[camelizeDownFirst .class.Name]].ID).Update([[camelizeDownFirst .class.Name]])
   if err != nil {
     c.Flash.Error(err.Error())
     c.FlashParams()
-    return c.Redirect(routes.[[.controllerName]].Edit(int64([[camelizeDownFirst .class.Name]].Id)))
+    return c.Redirect(routes.[[.controllerName]].Edit(int64([[camelizeDownFirst .class.Name]].ID)))
   }
   c.Flash.Success(revel.Message(c.Request.Locale, "update.success"))
-  return c.Redirect(routes.[[.controllerName]].Index(0, ""))
+  return c.Redirect(routes.[[.controllerName]].Index(0))
 }
 
 // 按 id 删除记录
 func (c [[.controllerName]]) Delete(id int64) revel.Result {
-  [[camelizeDownFirst .class.Name]] := &models.[[.class.Name]]{Id: id}
-  err := [[camelizeDownFirst .class.Name]].DeleteIt(app.DbRunner)
+  err :=  c.Lifecycle.DB.[[.modelName]]().Id(id).Delete()
   if nil != err {
     c.Flash.Error(err.Error())
   } else {
@@ -106,7 +110,7 @@ func (c [[.controllerName]]) Delete(id int64) revel.Result {
 
 // 按 id 列表删除记录
 func (c [[.controllerName]]) DeleteByIDs(id_list []int64) revel.Result {
-  _, err := models.[[.class.Name]]Model.Delete(app.DbRunner, models.[[.class.Name]]Model.C.ID.IN(id_list))
+  _, err :=  c.Lifecycle.DB.[[.modelName]]().Where().And("id IN (?)", id_list).Delete()
   if nil != err {
     return c.RenderError(err)
   } else {

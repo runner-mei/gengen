@@ -1,0 +1,26 @@
+
+import (
+  "github.com/go-xorm/xorm"
+  "github.com/runner-mei/orm"
+)
+
+type DB struct {
+  Engine *xorm.Engine
+}
+
+[[range $class := .classes]]
+func (db *DB) [[pluralize $class.Name]]() *orm.Collection {
+  return orm.New(func() interface{}{
+    return &[[$class.Name]]{}
+  })(db.Engine)
+}
+[[end]]
+
+
+
+func InitTables(engine *xorm.Engine) error {
+  beans := []interface{}{[[range $class := .classes]]
+  &[[$class.Name]]{},
+[[end]]}
+  return engine.CreateTables(beans...)
+}
