@@ -72,7 +72,11 @@ func (c [[.controllerName]]) Edit(id int64) revel.Result {
   var [[camelizeDownFirst .class.Name]] models.[[.class.Name]]
   err := c.Lifecycle.DB.[[.modelName]]().Id(id).Get(&[[camelizeDownFirst .class.Name]])
   if err != nil {
-    c.Flash.Error(err.Error())
+    if err == ErrNotFound {
+      c.Flash.Error(revel.Message(c.Request.Locale, "update.record_not_found"))
+    } else {
+      c.Flash.Error(err.Error())
+    }
     c.FlashParams()
     return c.Redirect(routes.[[.controllerName]].Index(0))
   }
@@ -90,7 +94,11 @@ func (c [[.controllerName]]) Update([[camelizeDownFirst .class.Name]] *models.[[
 
   err := c.Lifecycle.DB.[[.modelName]]().Id([[camelizeDownFirst .class.Name]].ID).Update([[camelizeDownFirst .class.Name]])
   if err != nil {
-    c.Flash.Error(err.Error())
+    if err == ErrNotFound {
+      c.Flash.Error(revel.Message(c.Request.Locale, "update.record_not_found"))
+    } else {
+      c.Flash.Error(err.Error())
+    }
     c.FlashParams()
     return c.Redirect(routes.[[.controllerName]].Edit(int64([[camelizeDownFirst .class.Name]].ID)))
   }
@@ -102,7 +110,11 @@ func (c [[.controllerName]]) Update([[camelizeDownFirst .class.Name]] *models.[[
 func (c [[.controllerName]]) Delete(id int64) revel.Result {
   err :=  c.Lifecycle.DB.[[.modelName]]().Id(id).Delete()
   if nil != err {
-    c.Flash.Error(err.Error())
+    if err == ErrNotFound {
+      c.Flash.Error(revel.Message(c.Request.Locale, "delete.record_not_found"))
+    } else {
+      c.Flash.Error(err.Error())
+    }
   } else {
     c.Flash.Success(revel.Message(c.Request.Locale, "delete.success"))
   }
