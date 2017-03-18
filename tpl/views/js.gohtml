@@ -1,17 +1,17 @@
 $(function () {
     var urlPrefix = $("#urlPrefix").val();
-    $(".delete").on("click", function () {
-        var val = [];
-        $("#row-checker:checked").each(function (i) {
-            val[i] = parseInt($(this).attr("key"));
-        });
-
+    $("#[[underscore .controllerName]]-delete").on("click", function () {
         if (!confirm("确认删除选定信息？")){
             return false
         }
 
+        var val = [];
+        $("#row-checker:checked").each(function (i) {
+            val.push(parseInt($(this).attr("key")));
+        });
+
         $.ajax({
-            url: urlPrefix + "/[[pluralize .class.Name | underscore]]",
+            url: $("#[[underscore .controllerName]]-delete").attr("url"),
             type: "POST",
             data: $.param({id_list: val, _method: "DELETE"}),
             dataType: "text",
@@ -19,16 +19,22 @@ $(function () {
                 alert(resp.responseText)
             },
             success: function (resp) {
-                location.reload();
+                window.location.reload();
             }
         });
         return false
     });
 
-    $(".update").on("click", function () {
+    $("#[[underscore .controllerName]]-edit").on("click", function () {
         var elements = $("#row-checker:checked");
         if (elements.length == 1) {
-            location.href = elements.first().attr("url");
+            window.location.href= elements.first().attr("url");
+        } else if (elements.length == 0) {
+            alert('请选择一条记录！')
+        } else {
+            alert('你选择了多条记录，请选择一条记录！')
         }
+
+        return false
     });
 });

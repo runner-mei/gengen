@@ -1,17 +1,17 @@
 <div class="quick-bar">
     <ul class="quick-actions ">
         <li>
-            <a href='{{url "[[.controllerName]].New"}}'  class="grid-action" method="" mode="*" confirm="" client="false" target="_self">
+            <a id='[[underscore .controllerName]]-new' href='{{url "[[.controllerName]].New"}}'  class="grid-action" method="" mode="*" confirm="" client="false" target="_self">
                 <i class="icon-add"></i>添加
             </a>
         </li>
         <li>
-            <a  href="#"  class="grid-action update" method="" mode="1" confirm="" client="false" target="_self">
+            <a id='[[underscore .controllerName]]-edit' href='' url='{{url "[[.controllerName]].Edit"}}'  class="grid-action update" method="" mode="1" confirm="" client="false" target="_self">
                 <i class="icon-edit"></i>编辑
             </a>
         </li>
         <li>
-            <a href="#"  class="grid-action delete" mode="+" target="_self">
+            <a id='[[underscore .controllerName]]-delete' href='' url='{{url "[[.controllerName]].DeleteByIDs"}}'  class="grid-action delete" mode="+" target="_self">
                 <i class="icon-delete"></i> 删除
             </a>
         </li>

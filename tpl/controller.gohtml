@@ -5,6 +5,7 @@ import (
   "[[.projectPath]]/app/routes"
 
   "github.com/revel/revel"
+  "github.com/runner-mei/orm"
   "upper.io/db.v3"
 )
 
@@ -110,7 +111,7 @@ func (c [[.controllerName]]) Delete(id int64) revel.Result {
 
 // 按 id 列表删除记录
 func (c [[.controllerName]]) DeleteByIDs(id_list []int64) revel.Result {
-  _, err :=  c.Lifecycle.DB.[[.modelName]]().Where().And("id IN (?)", id_list).Delete()
+  _, err :=  c.Lifecycle.DB.[[.modelName]]().Where().And(orm.Cond{"id IN": id_list}).Delete()
   if nil != err {
     return c.RenderError(err)
   } else {
