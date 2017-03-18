@@ -721,12 +721,17 @@ func (c [[.controllerName]]) Delete(id int64) revel.Result {
 
 // 按 id 列表删除记录
 func (c [[.controllerName]]) DeleteByIDs(id_list []int64) revel.Result {
+  if len(id_list) == 0 {
+    c.Flash.Error("请至少选择一条记录！")
+    return c.Redirect([[.controllerName]].Index)
+  }
   _, err :=  c.Lifecycle.DB.[[.modelName]]().Where().And(orm.Cond{"id IN": id_list}).Delete()
   if nil != err {
-    return c.RenderError(err)
+    c.Flash.Error(err.Error())
   } else {
-    return c.RenderJson(revel.Message(c.Request.Locale, "delete.success"))
+    c.Flash.Success(revel.Message(c.Request.Locale, "delete.success"))
   }
+  return c.Redirect([[.controllerName]].Index)
 }`
 
 var viewEditText = `{{set . "title" "编辑[[.controllerName]]"}}
@@ -772,6 +777,7 @@ var viewIndexText = `{{set . "title" "[[.controllerName]]"}}
       <tr>
         <th><input type="checkbox" class="all-checker"></th>[[range $field := .class.Fields]][[if needDisplay $field]]
         <th><nobr>[[localizeName $field]]</nobr></th>[[end]][[end]]
+        <th>操作</th>
       </tr>
       </thead>
       {{range $v := .[[camelizeDownFirst .modelName]]}}
@@ -779,6 +785,16 @@ var viewIndexText = `{{set . "title" "[[.controllerName]]"}}
         <td><input type="checkbox" class="row-checker" key="{{$v.ID}}" url="{{url "[[.controllerName]].Edit" $v.ID}}" id="row-checker"></td>
         [[range $column := .class.Fields]][[if needDisplay $column]]
         <td>{{$v.[[goify $column.Name true]]}}</td>[[end]][[end]]
+        <td>
+          <a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>
+          <form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete"  $v.ID}}" method="POST" class="form-horizontal">
+            <input type="hidden" name="_method" value="DELETE">
+            <input type="hidden" name="id" value="{{$v.ID}}">
+              <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">
+                <i class="icon-search"></i> 删除
+              </a>
+            </form>
+        </td>
       </tr>
       {{end}}
     </table>
@@ -827,6 +843,7 @@ var viewQuickText = `<div class="quick-bar">
             </a>
         </li>
     </ul>
+    <!--
     <ul class="quick-actions ">
         <form action="" method="get" class="form-action" id="[[underscore .controllerName]]-quick-form" >
             <li>
@@ -840,7 +857,7 @@ var viewQuickText = `<div class="quick-bar">
                 </a>
             </li>
         </form>
-    </ul>
+    </ul>-->
 </div>`
 
 var viewJsText = `$(function () {
@@ -850,23 +867,24 @@ var viewJsText = `$(function () {
             return false
         }
 
-        var val = [];
+        var f = document.createElement("form");
+        f.action = $("#[[underscore .controllerName]]-delete").attr("url");
+        f.method="POST";
+        var inputField = document.createElement("input");
+        inputField.type = "hidden";
+        inputField.name = "_method";
+        inputField.value = "DELETE";
+
         $("#row-checker:checked").each(function (i) {
-            val.push(parseInt($(this).attr("key")));
+            var inputField = document.createElement("input");
+            inputField.type = "hidden";
+            inputField.name = "id_list[]";
+            inputField.value = $(this).attr("key");
+            f.appendChild(inputField);
         });
 
-        $.ajax({
-            url: $("#[[underscore .controllerName]]-delete").attr("url"),
-            type: "POST",
-            data: $.param({id_list: val, _method: "DELETE"}),
-            dataType: "text",
-            error: function (resp) {
-                alert(resp.responseText)
-            },
-            success: function (resp) {
-                window.location.reload();
-            }
-        });
+        document.body.appendChild(f);
+        f.submit();
         return false
     });
 

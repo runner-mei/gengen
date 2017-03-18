@@ -111,10 +111,15 @@ func (c [[.controllerName]]) Delete(id int64) revel.Result {
 
 // 按 id 列表删除记录
 func (c [[.controllerName]]) DeleteByIDs(id_list []int64) revel.Result {
+  if len(id_list) == 0 {
+    c.Flash.Error("请至少选择一条记录！")
+    return c.Redirect([[.controllerName]].Index)
+  }
   _, err :=  c.Lifecycle.DB.[[.modelName]]().Where().And(orm.Cond{"id IN": id_list}).Delete()
   if nil != err {
-    return c.RenderError(err)
+    c.Flash.Error(err.Error())
   } else {
-    return c.RenderJson(revel.Message(c.Request.Locale, "delete.success"))
+    c.Flash.Success(revel.Message(c.Request.Locale, "delete.success"))
   }
+  return c.Redirect([[.controllerName]].Index)
 }

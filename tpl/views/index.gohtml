@@ -10,6 +10,7 @@
       <tr>
         <th><input type="checkbox" class="all-checker"></th>[[range $field := .class.Fields]][[if needDisplay $field]]
         <th><nobr>[[localizeName $field]]</nobr></th>[[end]][[end]]
+        <th>操作</th>
       </tr>
       </thead>
       {{range $v := .[[camelizeDownFirst .modelName]]}}
@@ -17,6 +18,16 @@
         <td><input type="checkbox" class="row-checker" key="{{$v.ID}}" url="{{url "[[.controllerName]].Edit" $v.ID}}" id="row-checker"></td>
         [[range $column := .class.Fields]][[if needDisplay $column]]
         <td>{{$v.[[goify $column.Name true]]}}</td>[[end]][[end]]
+        <td>
+          <a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>
+          <form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete"  $v.ID}}" method="POST" class="form-horizontal">
+            <input type="hidden" name="_method" value="DELETE">
+            <input type="hidden" name="id" value="{{$v.ID}}">
+              <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">
+                <i class="icon-search"></i> 删除
+              </a>
+            </form>
+        </td>
       </tr>
       {{end}}
     </table>

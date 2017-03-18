@@ -5,23 +5,24 @@ $(function () {
             return false
         }
 
-        var val = [];
+        var f = document.createElement("form");
+        f.action = $("#[[underscore .controllerName]]-delete").attr("url");
+        f.method="POST";
+        var inputField = document.createElement("input");
+        inputField.type = "hidden";
+        inputField.name = "_method";
+        inputField.value = "DELETE";
+
         $("#row-checker:checked").each(function (i) {
-            val.push(parseInt($(this).attr("key")));
+            var inputField = document.createElement("input");
+            inputField.type = "hidden";
+            inputField.name = "id_list[]";
+            inputField.value = $(this).attr("key");
+            f.appendChild(inputField);
         });
 
-        $.ajax({
-            url: $("#[[underscore .controllerName]]-delete").attr("url"),
-            type: "POST",
-            data: $.param({id_list: val, _method: "DELETE"}),
-            dataType: "text",
-            error: function (resp) {
-                alert(resp.responseText)
-            },
-            success: function (resp) {
-                window.location.reload();
-            }
-        });
+        document.body.appendChild(f);
+        f.submit();
         return false
     });
 
