@@ -682,7 +682,11 @@ func (c [[.controllerName]]) Edit(id int64) revel.Result {
   var [[camelizeDownFirst .class.Name]] models.[[.class.Name]]
   err := c.Lifecycle.DB.[[.modelName]]().Id(id).Get(&[[camelizeDownFirst .class.Name]])
   if err != nil {
-    c.Flash.Error(err.Error())
+    if err == orm.ErrNotFound {
+      c.Flash.Error(revel.Message(c.Request.Locale, "update.record_not_found"))
+    } else {
+      c.Flash.Error(err.Error())
+    }
     c.FlashParams()
     return c.Redirect(routes.[[.controllerName]].Index(0))
   }
@@ -700,7 +704,11 @@ func (c [[.controllerName]]) Update([[camelizeDownFirst .class.Name]] *models.[[
 
   err := c.Lifecycle.DB.[[.modelName]]().Id([[camelizeDownFirst .class.Name]].ID).Update([[camelizeDownFirst .class.Name]])
   if err != nil {
-    c.Flash.Error(err.Error())
+    if err == orm.ErrNotFound {
+      c.Flash.Error(revel.Message(c.Request.Locale, "update.record_not_found"))
+    } else {
+      c.Flash.Error(err.Error())
+    }
     c.FlashParams()
     return c.Redirect(routes.[[.controllerName]].Edit(int64([[camelizeDownFirst .class.Name]].ID)))
   }
@@ -712,7 +720,11 @@ func (c [[.controllerName]]) Update([[camelizeDownFirst .class.Name]] *models.[[
 func (c [[.controllerName]]) Delete(id int64) revel.Result {
   err :=  c.Lifecycle.DB.[[.modelName]]().Id(id).Delete()
   if nil != err {
-    c.Flash.Error(err.Error())
+    if err == orm.ErrNotFound {
+      c.Flash.Error(revel.Message(c.Request.Locale, "delete.record_not_found"))
+    } else {
+      c.Flash.Error(err.Error())
+    }
   } else {
     c.Flash.Success(revel.Message(c.Request.Locale, "delete.success"))
   }
@@ -758,7 +770,7 @@ var viewEditText = `{{set . "title" "编辑[[.controllerName]]"}}
 </div>
 {{template "[[if .layouts]][[.layouts]][[end]]footer.html" .}}`
 
-var viewFieldsText = `[[define "lengthLimit"]][[end]][[$instaneName := camelizeDownFirst .class.Name]] [[range $column := .class.Fields]][[if isID $column]][[else if eq $column.Type "string" ]][[if isClob $column ]]{{textarea_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | [[template "lengthLimit" $column]] render}}
+var viewFieldsText = `[[define "lengthLimit"]][[end]][[$instaneName := camelizeDownFirst .class.Name]] [[range $column := .class.Fields]][[if isID $column]][[else if eq $column.Type "string" ]][[if isClob $column ]]{{textarea_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" 3  0 | [[template "lengthLimit" $column]] render}}
 [[else]]{{text_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
 [[end]][[else if eq $column.Type "integer" "number" "biginteger" ]]{{number_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
 [[else if eq $column.Type "boolean" "bool" ]]{{checkbox_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
@@ -766,6 +778,11 @@ var viewFieldsText = `[[define "lengthLimit"]][[end]][[$instaneName := camelizeD
 [[else if editDisabled $column]][[end]][[end]]`
 
 var viewIndexText = `{{set . "title" "[[.controllerName]]"}}
+{{if eq .RunMode "dev"}}
+{{append . "moreScripts" "/public/js/plugins/bootbox/bootbox.js"}}
+{{else}}
+{{append . "moreScripts" "/public/js/plugins/bootbox/bootbox.min.js"}}
+{{end}}
 {{append . "moreScripts" "/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
 {{template "[[if .layouts]][[.layouts]][[end]]header.html" .}}
 
@@ -863,28 +880,30 @@ var viewQuickText = `<div class="quick-bar">
 var viewJsText = `$(function () {
     var urlPrefix = $("#urlPrefix").val();
     $("#[[underscore .controllerName]]-delete").on("click", function () {
-        if (!confirm("确认删除选定信息？")){
-            return false
-        }
+        bootbox.confirm("确认删除选定信息？", function(result){
+            if (!result) {
+                return;
+            }
 
-        var f = document.createElement("form");
-        f.action = $("#[[underscore .controllerName]]-delete").attr("url");
-        f.method="POST";
-        var inputField = document.createElement("input");
-        inputField.type = "hidden";
-        inputField.name = "_method";
-        inputField.value = "DELETE";
-
-        $("#row-checker:checked").each(function (i) {
+            var f = document.createElement("form");
+            f.action = $("#[[underscore .controllerName]]-delete").attr("url");
+            f.method="POST";
             var inputField = document.createElement("input");
             inputField.type = "hidden";
-            inputField.name = "id_list[]";
-            inputField.value = $(this).attr("key");
-            f.appendChild(inputField);
-        });
+            inputField.name = "_method";
+            inputField.value = "DELETE";
 
-        document.body.appendChild(f);
-        f.submit();
+            $("#row-checker:checked").each(function (i) {
+                var inputField = document.createElement("input");
+                inputField.type = "hidden";
+                inputField.name = "id_list[]";
+                inputField.value = $(this).attr("key");
+                f.appendChild(inputField);
+            });
+
+            document.body.appendChild(f);
+            f.submit();
+        })
         return false
     });
 
@@ -893,9 +912,9 @@ var viewJsText = `$(function () {
         if (elements.length == 1) {
             window.location.href= elements.first().attr("url");
         } else if (elements.length == 0) {
-            alert('请选择一条记录！')
+            bootbox.alert('请选择一条记录！')
         } else {
-            alert('你选择了多条记录，请选择一条记录！')
+            bootbox.alert('你选择了多条记录，请选择一条记录！')
         }
 
         return false
