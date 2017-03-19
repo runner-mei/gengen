@@ -1,0 +1,141 @@
+
+package tests
+
+import (
+	"net/url"
+	"strconv"
+	"strings"
+	"[[.projectPath]]/app"
+	"[[.projectPath]]/app/models"
+)
+
+// [[$varName := camelizeDownFirst .class.Name]] [[.controllerName]]Test 测试
+type [[.controllerName]]Test struct {
+	BaseTest
+}
+
+func (t [[.controllerName]]Test) Test[[.controllerName]]Index() {
+	t.ClearTable("[[tableName .class]]")
+	t.LoadFiles("tests/fixtures/[[underscore .controllerName]].yaml")	
+	//conds := EQU{"name": "这是一个规则名,请替换成正确的值"}
+	conds := EQU{}
+	ruleId := t.GetIDFromTable("[[tableName .class]]", conds)
+
+	t.Get(t.ReverseUrl("[[.controllerName]].Index"))
+	t.AssertOk()
+	t.AssertContentType("text/html; charset=utf-8")
+	//t.AssertContains("这是一个规则名,请替换成正确的值")
+
+	var [[$varName]] models.[[.class.Name]]
+	err :=  app.Lifecycle.DB.[[.controllerName]]().Id(ruleId).Get(&[[$varName]])
+	if err != nil {
+		t.Assertf(false, err.Error())
+	}
+	[[range $column := .class.Fields]][[if isID $column]][[else if eq $column.Name "created_at" "updated_at"]][[else if eq $column.Type "password"]][[else]]
+	t.AssertContains(fmt.Sprint([[$varName]].[[goify $column.Name true]]))[[end]][[end]]
+}
+
+func (t [[.controllerName]]Test) Test[[.controllerName]]New() {
+	t.ClearTable("[[tableName .class]]")
+	t.LoadFiles("tests/fixtures/[[underscore .controllerName]].yaml")
+	t.Get(t.ReverseUrl("[[.controllerName]].New"))
+	t.AssertOk()
+	t.AssertContentType("text/html; charset=utf-8")
+}
+
+func (t [[.controllerName]]Test) Test[[.controllerName]]Create() {
+	t.ClearTable("[[tableName .class]]")
+	v := url.Values{}
+	[[range $column := .class.Fields]][[if isID $column]][[else]]
+  v.Set("[[$varName]].[[goify $column.Name true]]", "[[randomValue $column]]")
+  [[end]][[end]]
+  
+  t.Post(t.ReverseUrl("[[.controllerName]].Create"), "application/x-www-form-urlencoded", strings.NewReader(v.Encode()))
+	t.AssertOk()
+
+	//conds := EQU{"name": "这是一个规则名,请替换成正确的值"}
+	conds := EQU{}
+	ruleId := t.GetIDFromTable("[[tableName .class]]", conds)
+
+	var [[$varName]] models.[[.class.Name]]
+	err :=  app.Lifecycle.DB.[[.controllerName]]().Id(ruleId).Get(&[[$varName]])
+	if err != nil {
+		t.Assertf(false, err.Error())
+	}
+	[[range $column := .class.Fields]][[if isID $column]][[else if eq $column.Name "created_at" "updated_at"]][[else]]
+	t.AssertEqual(fmt.Sprint([[$varName]].[[goify $column.Name true]]), v.Get("[[$varName]].[[goify $column.Name true]]"))[[end]][[end]]
+}
+
+func (t [[.controllerName]]Test) Test[[.controllerName]]Edit() {
+	t.ClearTable("[[tableName .class]]")
+	t.LoadFiles("tests/fixtures/[[underscore .controllerName]].yaml")
+	//conds := EQU{"name": "这是一个规则名,请替换成正确的值"}
+	conds := EQU{}
+	ruleId := t.GetIDFromTable("[[tableName .class]]", conds)
+	t.Get(t.ReverseUrl("[[.controllerName]].Edit", ruleId))
+	t.AssertOk()
+	t.AssertContentType("text/html; charset=utf-8")
+
+	var [[$varName]] models.[[.class.Name]]
+	err :=  app.Lifecycle.DB.[[.controllerName]]().Id(ruleId).Get(&[[$varName]])
+	if err != nil {
+		t.Assertf(false, err.Error())
+	}
+	fmt.Println(string(t.ResponseBody))
+	[[range $column := .class.Fields]][[if isID $column]][[else if eq $column.Name "created_at" "updated_at"]][[else if eq $column.Type "password"]][[else]]
+	t.AssertContains(fmt.Sprint([[$varName]].[[goify $column.Name true]]))[[end]][[end]]
+}
+
+func (t [[.controllerName]]Test) Test[[.controllerName]]Update() {
+	t.ClearTable("[[tableName .class]]")
+	t.LoadFiles("tests/fixtures/[[underscore .controllerName]].yaml")
+	//conds := EQU{"name": "这是一个规则名,请替换成正确的值"}
+	conds := EQU{}
+	ruleId := t.GetIDFromTable("[[tableName .class]]", conds)
+	v := url.Values{}
+	v.Set("_method", "PUT")
+	v.Set("[[$varName]].ID", strconv.FormatInt(ruleId, 10))
+
+	[[range $column := .class.Fields]][[if isID $column]][[else]]
+  v.Set("[[$varName]].[[goify $column.Name true]]", "[[randomValue $column]]")
+  [[end]][[end]]
+
+
+  t.Post(t.ReverseUrl("[[.controllerName]].Update"), "application/x-www-form-urlencoded", strings.NewReader(v.Encode()))
+	t.AssertOk()
+
+	var [[$varName]] models.[[.class.Name]]
+	err :=  app.Lifecycle.DB.[[.controllerName]]().Id(ruleId).Get(&[[$varName]])
+	if err != nil {
+		t.Assertf(false, err.Error())
+	}
+	[[range $column := .class.Fields]][[if isID $column]][[else if eq $column.Name "created_at" "updated_at"]][[else]]
+	t.AssertEqual(fmt.Sprint([[$varName]].[[goify $column.Name true]]), v.Get("[[$varName]].[[goify $column.Name true]]"))
+  [[end]][[end]]
+}
+
+func (t [[.controllerName]]Test) Test[[.controllerName]]Delete() {
+	t.ClearTable("[[tableName .class]]")
+	t.LoadFiles("tests/fixtures/[[underscore .controllerName]].yaml")
+	//conds := EQU{"name": "这是一个规则名,请替换成正确的值"}
+	conds := EQU{}
+	ruleId := t.GetIDFromTable("[[tableName .class]]", conds)
+	t.Delete(t.ReverseUrl("[[.controllerName]].Delete", ruleId))
+	t.AssertStatus(http.StatusFound)
+	//t.AssertContentType("application/json; charset=utf-8")
+	count := t.GetCountFromTable("[[tableName .class]]", nil)
+	t.Assertf(count == 0, "count != 0, actual is %v", count)
+}
+
+func (t [[.controllerName]]Test) Test[[.controllerName]]DeleteByIDs() {
+	t.ClearTable("[[tableName .class]]")
+	t.LoadFiles("tests/fixtures/[[underscore .controllerName]].yaml")
+	//conds := EQU{"name": "这是一个规则名,请替换成正确的值"}
+	conds := EQU{}
+	ruleId := t.GetIDFromTable("[[tableName .class]]", conds)
+	t.Delete(t.ReverseUrl("[[.controllerName]].DeleteByIDs", []interface{}{ruleId}))
+	t.AssertStatus(http.StatusFound)
+	//t.AssertContentType("application/json; charset=utf-8")
+	count := t.GetCountFromTable("[[tableName .class]]", nil)
+	t.Assertf(count == 0, "count != 0, actual is %v", count)
+}

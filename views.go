@@ -73,6 +73,9 @@ func (cmd *GenerateViewCommand) genrateView(cls *types.ClassSpec) error {
 				}
 			}
 
+			if f.Name == "id" {
+				return false
+			}
 			if f.Type == "password" {
 				return false
 			}

@@ -922,6 +922,327 @@ var viewJsText = `$(function () {
 });
 `
 
+var testCtlText = `
+package tests
+
+import (
+	"net/url"
+	"strconv"
+	"strings"
+	"[[.projectPath]]/app"
+	"[[.projectPath]]/app/models"
+)
+
+// [[$varName := camelizeDownFirst .class.Name]] [[.controllerName]]Test 测试
+type [[.controllerName]]Test struct {
+	BaseTest
+}
+
+func (t [[.controllerName]]Test) Test[[.controllerName]]Index() {
+	t.ClearTable("[[tableName .class]]")
+	t.LoadFiles("tests/fixtures/[[underscore .controllerName]].yaml")	
+	//conds := EQU{"name": "这是一个规则名,请替换成正确的值"}
+	conds := EQU{}
+	ruleId := t.GetIDFromTable("[[tableName .class]]", conds)
+
+	t.Get(t.ReverseUrl("[[.controllerName]].Index"))
+	t.AssertOk()
+	t.AssertContentType("text/html; charset=utf-8")
+	//t.AssertContains("这是一个规则名,请替换成正确的值")
+
+	var [[$varName]] models.[[.class.Name]]
+	err :=  app.Lifecycle.DB.[[.controllerName]]().Id(ruleId).Get(&[[$varName]])
+	if err != nil {
+		t.Assertf(false, err.Error())
+	}
+	[[range $column := .class.Fields]][[if isID $column]][[else if eq $column.Name "created_at" "updated_at"]][[else if eq $column.Type "password"]][[else]]
+	t.AssertContains(fmt.Sprint([[$varName]].[[goify $column.Name true]]))[[end]][[end]]
+}
+
+func (t [[.controllerName]]Test) Test[[.controllerName]]New() {
+	t.ClearTable("[[tableName .class]]")
+	t.LoadFiles("tests/fixtures/[[underscore .controllerName]].yaml")
+	t.Get(t.ReverseUrl("[[.controllerName]].New"))
+	t.AssertOk()
+	t.AssertContentType("text/html; charset=utf-8")
+}
+
+func (t [[.controllerName]]Test) Test[[.controllerName]]Create() {
+	t.ClearTable("[[tableName .class]]")
+	v := url.Values{}
+	[[range $column := .class.Fields]][[if isID $column]][[else]]
+  v.Set("[[$varName]].[[goify $column.Name true]]", "[[randomValue $column]]")
+  [[end]][[end]]
+  
+  t.Post(t.ReverseUrl("[[.controllerName]].Create"), "application/x-www-form-urlencoded", strings.NewReader(v.Encode()))
+	t.AssertOk()
+
+	//conds := EQU{"name": "这是一个规则名,请替换成正确的值"}
+	conds := EQU{}
+	ruleId := t.GetIDFromTable("[[tableName .class]]", conds)
+
+	var [[$varName]] models.[[.class.Name]]
+	err :=  app.Lifecycle.DB.[[.controllerName]]().Id(ruleId).Get(&[[$varName]])
+	if err != nil {
+		t.Assertf(false, err.Error())
+	}
+	[[range $column := .class.Fields]][[if isID $column]][[else if eq $column.Name "created_at" "updated_at"]][[else]]
+	t.AssertEqual(fmt.Sprint([[$varName]].[[goify $column.Name true]]), v.Get("[[$varName]].[[goify $column.Name true]]"))[[end]][[end]]
+}
+
+func (t [[.controllerName]]Test) Test[[.controllerName]]Edit() {
+	t.ClearTable("[[tableName .class]]")
+	t.LoadFiles("tests/fixtures/[[underscore .controllerName]].yaml")
+	//conds := EQU{"name": "这是一个规则名,请替换成正确的值"}
+	conds := EQU{}
+	ruleId := t.GetIDFromTable("[[tableName .class]]", conds)
+	t.Get(t.ReverseUrl("[[.controllerName]].Edit", ruleId))
+	t.AssertOk()
+	t.AssertContentType("text/html; charset=utf-8")
+
+	var [[$varName]] models.[[.class.Name]]
+	err :=  app.Lifecycle.DB.[[.controllerName]]().Id(ruleId).Get(&[[$varName]])
+	if err != nil {
+		t.Assertf(false, err.Error())
+	}
+	fmt.Println(string(t.ResponseBody))
+	[[range $column := .class.Fields]][[if isID $column]][[else if eq $column.Name "created_at" "updated_at"]][[else if eq $column.Type "password"]][[else]]
+	t.AssertContains(fmt.Sprint([[$varName]].[[goify $column.Name true]]))[[end]][[end]]
+}
+
+func (t [[.controllerName]]Test) Test[[.controllerName]]Update() {
+	t.ClearTable("[[tableName .class]]")
+	t.LoadFiles("tests/fixtures/[[underscore .controllerName]].yaml")
+	//conds := EQU{"name": "这是一个规则名,请替换成正确的值"}
+	conds := EQU{}
+	ruleId := t.GetIDFromTable("[[tableName .class]]", conds)
+	v := url.Values{}
+	v.Set("_method", "PUT")
+	v.Set("[[$varName]].ID", strconv.FormatInt(ruleId, 10))
+
+	[[range $column := .class.Fields]][[if isID $column]][[else]]
+  v.Set("[[$varName]].[[goify $column.Name true]]", "[[randomValue $column]]")
+  [[end]][[end]]
+
+
+  t.Post(t.ReverseUrl("[[.controllerName]].Update"), "application/x-www-form-urlencoded", strings.NewReader(v.Encode()))
+	t.AssertOk()
+
+	var [[$varName]] models.[[.class.Name]]
+	err :=  app.Lifecycle.DB.[[.controllerName]]().Id(ruleId).Get(&[[$varName]])
+	if err != nil {
+		t.Assertf(false, err.Error())
+	}
+	[[range $column := .class.Fields]][[if isID $column]][[else if eq $column.Name "created_at" "updated_at"]][[else]]
+	t.AssertEqual(fmt.Sprint([[$varName]].[[goify $column.Name true]]), v.Get("[[$varName]].[[goify $column.Name true]]"))
+  [[end]][[end]]
+}
+
+func (t [[.controllerName]]Test) Test[[.controllerName]]Delete() {
+	t.ClearTable("[[tableName .class]]")
+	t.LoadFiles("tests/fixtures/[[underscore .controllerName]].yaml")
+	//conds := EQU{"name": "这是一个规则名,请替换成正确的值"}
+	conds := EQU{}
+	ruleId := t.GetIDFromTable("[[tableName .class]]", conds)
+	t.Delete(t.ReverseUrl("[[.controllerName]].Delete", ruleId))
+	t.AssertStatus(http.StatusFound)
+	//t.AssertContentType("application/json; charset=utf-8")
+	count := t.GetCountFromTable("[[tableName .class]]", nil)
+	t.Assertf(count == 0, "count != 0, actual is %v", count)
+}
+
+func (t [[.controllerName]]Test) Test[[.controllerName]]DeleteByIDs() {
+	t.ClearTable("[[tableName .class]]")
+	t.LoadFiles("tests/fixtures/[[underscore .controllerName]].yaml")
+	//conds := EQU{"name": "这是一个规则名,请替换成正确的值"}
+	conds := EQU{}
+	ruleId := t.GetIDFromTable("[[tableName .class]]", conds)
+	t.Delete(t.ReverseUrl("[[.controllerName]].DeleteByIDs", []interface{}{ruleId}))
+	t.AssertStatus(http.StatusFound)
+	//t.AssertContentType("application/json; charset=utf-8")
+	count := t.GetCountFromTable("[[tableName .class]]", nil)
+	t.Assertf(count == 0, "count != 0, actual is %v", count)
+}
+`
+
+var testYamlText = `- table: '[[tableName .class]]'
+  pk:
+    id: 'PK_GENERATE([[underscore .class.Name]]_key)'
+  fields:[[range $column := .class.Fields]][[if isID $column]][[else]]
+    [[$column.Name]]: [[randomValue $column]][[end]][[end]]`
+
+var testBaseText = `package tests
+
+import (
+	"cn/com/hengwei/commons/httputils"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"io"
+	"[[.projectPath]]/app"
+	"strings"
+
+	fixtures "github.com/AreaHQ/go-fixtures"
+	"github.com/Masterminds/squirrel"
+	"github.com/revel/revel"
+	"github.com/revel/revel/testing"
+)
+
+// DbRunner wraps sql.DB to implement Runner.
+type DbRunner struct {
+	*sql.DB
+}
+
+// QueryRow wraps QueryRow to implement RowScanner.
+func (r DbRunner) QueryRow(query string, args ...interface{}) squirrel.RowScanner {
+	return r.DB.QueryRow(query, args...)
+}
+
+type EQU map[string]interface{}
+
+type BaseTest struct {
+	testing.TestSuite
+}
+
+func (t *BaseTest) Before() {
+	println("================ Set up  =================")
+	fmt.Println(app.Lifecycle.Env.Db.Models.Url())
+	if !strings.Contains(app.Lifecycle.Env.Db.Models.Schema, "_test") {
+		panic("runMode must is test.")
+	}
+}
+
+func (t *BaseTest) After() {
+	println("=============== Tear down ================")
+}
+
+func (t *BaseTest) DB() *sql.DB {
+	return app.Lifecycle.DB.Engine.DB().DB
+}
+
+func (t *BaseTest) DataDB() *sql.DB {
+	return app.Lifecycle.DataDB.Engine.DB().DB
+}
+
+func (t *BaseTest) DBRunable() squirrel.Runner{
+	return &DbRunner{t.DB()}
+}
+
+func (t *BaseTest) DataDBRunable() squirrel.Runner{
+	return &DbRunner{t.DataDB()}
+}
+
+func (t *BaseTest) ReverseUrl(args ...interface{}) string {
+	s, e := revel.ReverseUrl(args...)
+	if e != nil {
+		t.Assertf(false, e.Error())
+		return ""
+	}
+	return string(s)
+}
+
+func (t *BaseTest) LoadFiles(filenames ...string) {
+	if err := fixtures.LoadFiles(filenames, t.DB(), "postgres"); err != nil {
+		t.Assertf(false, err.Error())
+		return
+	}
+}
+
+func (t *BaseTest) LoadFilesToData(filenames ...string) {
+	if err := fixtures.LoadFiles(filenames, t.DataDB(), "postgres"); err != nil {
+		t.Assertf(false, err.Error())
+		return
+	}
+}
+
+func (t *BaseTest) GetCountFromTable(table string, params EQU) (count int64) {
+	return t.getCountFromTable(t.DBRunable(), table, params)
+}
+
+func (t *BaseTest) GetCountFromDataTable(table string, params EQU) (count int64) {
+	return t.getCountFromTable(t.DataDBRunable(), table, params)
+}
+
+func (t *BaseTest) getCountFromTable(dbRunner squirrel.Runner, table string, params EQU) (count int64) {
+	builder := squirrel.Select("count(*)").From(table)
+	if len(params) > 0 {
+		builder = builder.Where(squirrel.Eq(params))
+	}
+	builder = builder.PlaceholderFormat(squirrel.Dollar)
+
+	fmt.Println(builder.ToSql())
+	rs := squirrel.QueryRowWith(dbRunner, builder)
+	if err := rs.Scan(&count); nil != err {
+		t.Assertf(false, err.Error())
+	}
+	return count
+}
+
+func (t *BaseTest) GetIDFromTable(table string, params EQU) (id int64) {
+	return t.getIDFromTable(t.DBRunable(), table, params)
+}
+
+func (t *BaseTest) GetIDFromDataTable(table string, params EQU) (id int64) {
+	return t.getIDFromTable(t.DataDBRunable(), table, params)
+}
+
+func (t *BaseTest) getIDFromTable(dbRunner squirrel.Runner, table string, params EQU) (id int64) {
+	builder := squirrel.Select("id").From(table)
+	if len(params) > 0 {
+		builder = builder.Where(squirrel.Eq(params))
+	}
+	builder = builder.PlaceholderFormat(squirrel.Dollar)
+	rs := squirrel.QueryRowWith(dbRunner, builder)
+	if err := rs.Scan(&id); nil != err {
+		t.Assertf(false, err.Error())
+	}
+	return id
+}
+
+func (t *BaseTest) ClearTable(tableName string) {
+	t.clearTable(t.DBRunable(), tableName)
+}
+
+func (t *BaseTest) ClearDataTable(tableName string) {
+	t.clearTable(t.DataDBRunable(), tableName)
+}
+
+func (t *BaseTest) clearTable(dbRunner squirrel.Runner, tableName string) {
+	if _, err := dbRunner.Exec("truncate table " + tableName + " cascade"); err != nil {
+		t.Assertf(false, err.Error())
+	}
+}
+
+func (t *BaseTest) ClearDB() {
+	if _, err := t.DB().Exec("select clear_data_of_all_table()"); err != nil {
+		t.Assertf(false, err.Error())
+	}
+}
+
+func (t *BaseTest) ResponseAsJSONObject() map[string]interface{} {
+	var res map[string]interface{}
+	if err := json.Unmarshal(t.ResponseBody, &res); err != nil {
+		t.Assertf(false, err.Error())
+	}
+	return res
+}
+
+func (t *BaseTest) ResponseAsJSONArray() []map[string]interface{} {
+	var res []map[string]interface{}
+	if err := json.Unmarshal(t.ResponseBody, &res); err != nil {
+		t.Assertf(false, err.Error())
+	}
+	return res
+}
+
+func (t *BaseTest) ResponseAsArray() []interface{} {
+	var res []interface{}
+	if err := json.Unmarshal(t.ResponseBody, &res); err != nil {
+		t.Assertf(false, err.Error())
+	}
+	return res
+}`
+
 var dbText = `
 import (
   "github.com/go-xorm/xorm"
@@ -974,6 +1295,12 @@ func textDefault(nm string) []byte {
 		return []byte(viewQuickText)
 	case "views/js":
 		return []byte(viewJsText)
+	case "tests/test_ctl":
+		return []byte(testCtlText)
+	case "tests/test_yaml":
+		return []byte(testYamlText)
+	case "tests/test_base":
+		return []byte(testBaseText)
 	case "db":
 		return []byte(dbText)
 	default:

@@ -22,16 +22,18 @@ func (cmd *GenerateDBObjectCommand) generateStructs(tables []*types.ClassSpec) e
 		"omitempty": func(t types.FieldSpec) bool {
 			return !t.IsRequired
 		},
-		"tableName": func(t types.ClassSpec) string {
-			if t.Table != "" {
-				return t.Table
-			}
-			return Tableize(t.Name)
-		}}
+		"tableName": getTableName}
 
 	params := map[string]interface{}{"namespace": cmd.ns,
 		"classes": tables}
 
 	return cmd.executeTempate(cmd.override, []string{"ns", "db"}, funcs, params,
 		filepath.Join(cmd.output, "db.go"))
+}
+
+func getTableName(t *types.ClassSpec) string {
+	if t.Table != "" {
+		return t.Table
+	}
+	return Tableize(t.Name)
 }

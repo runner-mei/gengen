@@ -61,6 +61,9 @@ func (cmd *embedeCommand) Run(args []string) error {
 		{"views/new", "viewNewText", "tpl/views/new.gohtml"},
 		{"views/quick", "viewQuickText", "tpl/views/quick.gohtml"},
 		{"views/js", "viewJsText", "tpl/views/js.gohtml"},
+		{"tests/test_ctl", "testCtlText", "tpl/tests/test_ctl.gohtml"},
+		{"tests/test_yaml", "testYamlText", "tpl/tests/test_yaml.gohtml"},
+		{"tests/test_base", "testBaseText", "tpl/tests/test_base.gohtml"},
 		{"db", "dbText", "tpl/db.gohtml"}}
 	for _, t := range templates {
 		if e := cmd.copyFile(out, t[1], t[2]); e != nil {
@@ -117,6 +120,8 @@ func init() {
 	command.On("struct", "", &GenerateStructCommand{}, nil)
 	command.On("db", "", &GenerateDBObjectCommand{}, nil)
 	command.On("mvc", "", &GenerateMVCCommand{}, nil)
+	command.On("test", "", &GenerateUnitTestCommand{}, nil)
+	command.On("test_base", "", &GenerateTestCommand{}, nil)
 }
 
 func main() {

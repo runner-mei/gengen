@@ -1,0 +1,5 @@
+- table: '[[tableName .class]]'
+  pk:
+    id: 'PK_GENERATE([[underscore .class.Name]]_key)'
+  fields:[[range $column := .class.Fields]][[if isID $column]][[else]]
+    [[$column.Name]]: [[randomValue $column]][[end]][[end]]
