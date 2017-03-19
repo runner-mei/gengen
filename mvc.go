@@ -27,6 +27,7 @@ func (cmd *GenerateMVCCommand) Run(args []string) error {
 	var views GenerateViewCommand
 	var js GenerateJSCommand
 	var ctl GenerateControllerCommand
+	var ut GenerateUnitTestCommand
 	ctl.ns = "models"
 	st.CopyFrom(&cmd.baseCommand)
 	st.output = filepath.Join(cmd.output, "app", "models")
@@ -40,6 +41,10 @@ func (cmd *GenerateMVCCommand) Run(args []string) error {
 	ctl.controller = cmd.controller
 	ctl.projectPath = cmd.projectPath
 	ctl.output = filepath.Join(cmd.output, "app", "controllers")
+	ut.ns = "tests"
+	// ut.controller = cmd.controller
+	ut.projectPath = cmd.projectPath
+	ut.output = cmd.output
 
 	if err := st.Run(args); err != nil {
 		return err
@@ -54,6 +59,10 @@ func (cmd *GenerateMVCCommand) Run(args []string) error {
 	}
 
 	if err := ctl.Run(args); err != nil {
+		return err
+	}
+
+	if err := ut.Run(args); err != nil {
 		return err
 	}
 	return nil
