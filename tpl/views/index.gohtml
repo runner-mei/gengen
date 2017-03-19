@@ -4,7 +4,7 @@
 {{else}}
 {{append . "moreScripts" "/public/js/plugins/bootbox/bootbox.min.js"}}
 {{end}}
-{{append . "moreScripts" "/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
+{{append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
 {{template "[[if .layouts]][[.layouts]][[end]]header.html" .}}
 
 <div class="widget stacked">

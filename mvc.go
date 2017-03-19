@@ -11,6 +11,7 @@ type GenerateMVCCommand struct {
 	controller  string
 	projectPath string
 	layouts     string
+	customPath  string
 }
 
 // Flags - 申明参数
@@ -18,6 +19,7 @@ func (cmd *GenerateMVCCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 	fs.StringVar(&cmd.controller, "controller", "", "the base controller name")
 	fs.StringVar(&cmd.projectPath, "projectPath", "", "the project path")
 	fs.StringVar(&cmd.layouts, "layouts", "", "")
+	fs.StringVar(&cmd.customPath, "customPath", "", "")
 	return cmd.baseCommand.Flags(fs)
 }
 
@@ -33,6 +35,7 @@ func (cmd *GenerateMVCCommand) Run(args []string) error {
 	st.output = filepath.Join(cmd.output, "app", "models")
 	views.CopyFrom(&cmd.baseCommand)
 	views.layouts = cmd.layouts
+	views.customPath = cmd.customPath
 	views.output = filepath.Join(cmd.output, "app", "views")
 	js.CopyFrom(&cmd.baseCommand)
 	js.output = filepath.Join(cmd.output, "public", "js")

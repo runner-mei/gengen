@@ -15,12 +15,14 @@ import (
 // GenerateViewCommand - 生成视图
 type GenerateViewCommand struct {
 	baseCommand
-	layouts string
+	layouts    string
+	customPath string
 }
 
 // Flags - 申明参数
 func (cmd *GenerateViewCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 	fs.StringVar(&cmd.layouts, "layouts", "", "")
+	fs.StringVar(&cmd.customPath, "customPath", "", "")
 	return cmd.baseCommand.Flags(fs)
 }
 
@@ -35,6 +37,7 @@ func (cmd *GenerateViewCommand) genrateView(cls *types.ClassSpec) error {
 		"controllerName": ctlName,
 		"modelName":      ctlName,
 		"layouts":        cmd.layouts,
+		"customPath":     cmd.customPath,
 		"class":          cls}
 	funcs := template.FuncMap{"localizeName": localizeName,
 		"isClob": func(f types.FieldSpec) bool {

@@ -1,6 +1,5 @@
 {{set . "title" "编辑[[.controllerName]]"}}
-{{append . "moreStyles" "/public/css/form.css"}}
-{{append . "moreScripts" "/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
+{{append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
 {{template "[[if .layouts]][[.layouts]][[end]]header.html" .}}
 <div class="widget stacked">
     <div class="widget-header">

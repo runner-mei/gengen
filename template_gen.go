@@ -748,7 +748,7 @@ func (c [[.controllerName]]) DeleteByIDs(id_list []int64) revel.Result {
 
 var viewEditText = `{{set . "title" "编辑[[.controllerName]]"}}
 {{append . "moreStyles" "/public/css/form.css"}}
-{{append . "moreScripts" "/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
+{{append . "moreScripts" "/self/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
 {{template "[[if .layouts]][[.layouts]][[end]]header.html" .}}
 <div class="widget stacked">
     <div class="widget-header">
@@ -770,7 +770,7 @@ var viewEditText = `{{set . "title" "编辑[[.controllerName]]"}}
 </div>
 {{template "[[if .layouts]][[.layouts]][[end]]footer.html" .}}`
 
-var viewFieldsText = `[[define "lengthLimit"]][[end]][[$instaneName := camelizeDownFirst .class.Name]] [[range $column := .class.Fields]][[if isID $column]][[else if eq $column.Type "string" ]][[if isClob $column ]]{{textarea_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" 3  0 | [[template "lengthLimit" $column]] render}}
+var viewFieldsText = `[[define "lengthLimit"]][[end]][[$instaneName := camelizeDownFirst .class.Name]][[range $column := .class.Fields]][[if isID $column]][[else if eq $column.Type "string" ]][[if isClob $column ]]{{textarea_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" 3  0 | [[template "lengthLimit" $column]] render}}
 [[else]]{{text_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
 [[end]][[else if eq $column.Type "integer" "number" "biginteger" ]]{{number_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
 [[else if eq $column.Type "boolean" "bool" ]]{{checkbox_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
@@ -783,7 +783,7 @@ var viewIndexText = `{{set . "title" "[[.controllerName]]"}}
 {{else}}
 {{append . "moreScripts" "/public/js/plugins/bootbox/bootbox.min.js"}}
 {{end}}
-{{append . "moreScripts" "/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
+{{append . "moreScripts" "/self/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
 {{template "[[if .layouts]][[.layouts]][[end]]header.html" .}}
 
 <div class="widget stacked">
@@ -823,7 +823,7 @@ var viewIndexText = `{{set . "title" "[[.controllerName]]"}}
 
 var viewNewText = `{{set . "title" "新建[[.controllerName]]"}}
 {{append . "moreStyles" "/public/css/form.css"}}
-{{append . "moreScripts" "/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
+{{append . "moreScripts" "/self/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
 {{template "[[if .layouts]][[.layouts]][[end]]header.html" .}}
 <div class="widget stacked">
     <div class="widget-header">
