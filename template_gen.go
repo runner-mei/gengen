@@ -577,7 +577,7 @@ var ns = `package [[.namespace]]
 
 var handler = ``
 
-var structText = `
+var structText = `[[$var := camelizeDownFirst .class.Name]]
 type [[.class.Name]] struct {[[range $field := .class.Fields ]]
   [[goify $field.Name  true]] [[gotype $field.Type]] ` + "`" + `json:"[[underscore $field.Name]][[if omitempty $field]],omitempty[[end]]" xorm:"[[underscore $field.Name]][[if eq $field.Name "id"]] pk autoincr[[else if eq $field.Name "created_at"]] created[[else if eq $field.Name "updated_at"]] updated[[end]][[if $field.IsUniquely]][[if ne $field.Name "id"]] unique[[end]][[end]][[if $field.DefaultValue]] default('[[$field.DefaultValue]]')[[end]]"` + "`" + `[[end]]
 }
@@ -587,7 +587,7 @@ func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) TableName() string {
   return "[[if .class.Table]][[.class.Table]][[else]][[pluralize .class.Name | underscore]][[end]]"
 }
 
-func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) Validate(validation *revel.Validation) bool {[[$var := camelizeDownFirst .class.Name]]
+func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) Validate(validation *revel.Validation) bool {
 [[range $column := .class.Fields]]
 [[if ne $column.Name "id"]][[if $column.IsRequired]]
   validation.Required([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
@@ -606,6 +606,14 @@ func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) Validate(validation *r
         [[end]][[end]]
 [[end]][[end]]
   return validation.HasErrors()
+}
+
+func KeyFor[[pluralize .class.Name]](key string) string {
+  switch key {[[range $column := .class.Fields]]
+  case "[[$column.Name]]":
+     return "[[$var]].[[goify $column.Name true]]"[[end]]
+  }
+  return key
 }`
 
 var controllerText = `import (
@@ -625,7 +633,7 @@ type [[.controllerName]] struct {
 }
 
 // 列出所有记录
-func (c [[.controllerName]]) Index(pageIndex int) revel.Result {
+func (c [[.controllerName]]) Index(pageIndex int, pageSize int) revel.Result {
   //var exprs []db.Expr
   //if "" != name {
   //  exprs = append(exprs, models.[[.class.Name]]s.C.NAME.LIKE("%"+name+"%"))
@@ -639,17 +647,21 @@ func (c [[.controllerName]]) Index(pageIndex int) revel.Result {
     return c.Render(err)
   }
 
+  if pageSize <= 0 {
+    pageSize = libs.DEFAULT_SIZE_PER_PAGE
+  }
+
   var [[camelizeDownFirst .modelName]] []models.[[.class.Name]]
   err = c.Lifecycle.DB.[[.modelName]]().Where().
-    Limit(libs.DEFAULT_SIZE_PER_PAGE).
-    Offset(pageIndex * libs.DEFAULT_SIZE_PER_PAGE).
+    Limit(pageSize).
+    Offset(pageIndex * pageSize).
     All(&[[camelizeDownFirst .modelName]])
   if err != nil {
     c.Flash.Error(err.Error())
     c.FlashParams()
     return c.Render()
   }
-  paginator := libs.NewPaginator(c.Request.Request, libs.DEFAULT_SIZE_PER_PAGE, total)
+  paginator := libs.NewPaginator(c.Request.Request, pageSize, total)
   return c.Render([[camelizeDownFirst .modelName]], paginator)
 }
 
@@ -668,13 +680,19 @@ func (c [[.controllerName]]) Create([[camelizeDownFirst .class.Name]] *models.[[
 
   _, err := c.Lifecycle.DB.[[.modelName]]().Insert([[camelizeDownFirst .class.Name]])
   if err != nil {
+    if oerr, ok := err.(*orm.Error); ok {
+      for _, validation := range oerr.Validations {
+        c.Validation.Error(validation.Message).Key(models.KeyFor[[.modelName]](validation.Key))
+      }
+      c.Validation.Keep()
+    }
     c.Flash.Error(err.Error())
     c.FlashParams()
     return c.Redirect(routes.[[.controllerName]].New())
   }
 
   c.Flash.Success(revel.Message(c.Request.Locale, "insert.success"))
-  return c.Redirect(routes.[[.controllerName]].Index(0))
+  return c.Redirect(routes.[[.controllerName]].Index(0, 0))
 }
 
 // 编辑指定 id 的记录
@@ -688,7 +706,7 @@ func (c [[.controllerName]]) Edit(id int64) revel.Result {
       c.Flash.Error(err.Error())
     }
     c.FlashParams()
-    return c.Redirect(routes.[[.controllerName]].Index(0))
+    return c.Redirect(routes.[[.controllerName]].Index(0, 0))
   }
   return c.Render([[camelizeDownFirst .class.Name]])
 }
@@ -707,13 +725,19 @@ func (c [[.controllerName]]) Update([[camelizeDownFirst .class.Name]] *models.[[
     if err == orm.ErrNotFound {
       c.Flash.Error(revel.Message(c.Request.Locale, "update.record_not_found"))
     } else {
+      if oerr, ok := err.(*orm.Error); ok {
+        for _, validation := range oerr.Validations {
+          c.Validation.Error(validation.Message).Key(models.KeyFor[[.modelName]](validation.Key))
+        }
+        c.Validation.Keep()
+      }
       c.Flash.Error(err.Error())
     }
     c.FlashParams()
     return c.Redirect(routes.[[.controllerName]].Edit(int64([[camelizeDownFirst .class.Name]].ID)))
   }
   c.Flash.Success(revel.Message(c.Request.Locale, "update.success"))
-  return c.Redirect(routes.[[.controllerName]].Index(0))
+  return c.Redirect(routes.[[.controllerName]].Index(0, 0))
 }
 
 // 按 id 删除记录
@@ -747,22 +771,23 @@ func (c [[.controllerName]]) DeleteByIDs(id_list []int64) revel.Result {
 }`
 
 var viewEditText = `{{set . "title" "编辑[[.controllerName]]"}}
-{{append . "moreStyles" "/public/css/form.css"}}
-{{append . "moreScripts" "/self/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
+{{append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
 {{template "[[if .layouts]][[.layouts]][[end]]header.html" .}}
-<div class="widget stacked">
-    <div class="widget-header">
-        <h3>编辑[[.controllerName]]</h3>
+<div class="ibox float-e-margins">
+    <div class="ibox-title">
+        [[edit_label .class]]
+        <div class="ibox-tools"></div>
     </div>
-    <div class="widget-content">
-        <form action="{{url "[[.controllerName]].Update" }}" method="POST" class="form-horizontal" id="insert">
+    <div class="ibox-content">
+        <form action="{{url "[[.controllerName]].Update" }}" method="POST" class="form-horizontal" id="[[underscore .controllerName]]-edit">
         <input type="hidden" name="_method" value="PUT">
         {{with $field := field "[[camelizeDownFirst .class.Name]].ID" .}}<input type="hidden" name="{{$field.Name}}" value="{{if $field.Flash}}{{$field.Flash}}{{else}}{{$field.Value}}{{end}}">{{end}}
         {{template "[[.controllerName]]/edit_fields.html" .}}
-        <div class="controls-group">
-            <div class="controls controls-row">
+        
+        <div class="form-group">
+            <div class="col-lg-offset-2 col-lg-10">
                 <button type="submit" class="btn btn-info controls">修改</button>
-                <button type="submit" class="btn btn-info controls">取消</button>
+                <a href="{{url "[[.controllerName]].Index" }}" class="btn btn-info controls">取消</a>
             </div>
         </div>
         </form>
@@ -783,28 +808,33 @@ var viewIndexText = `{{set . "title" "[[.controllerName]]"}}
 {{else}}
 {{append . "moreScripts" "/public/js/plugins/bootbox/bootbox.min.js"}}
 {{end}}
-{{append . "moreScripts" "/self/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
+{{append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
 {{template "[[if .layouts]][[.layouts]][[end]]header.html" .}}
 
-<div class="widget stacked">
-  <div class="gui-list">
+<div class="ibox float-e-margins">
+    <div class="ibox-title">
+        [[index_label .class]]
+        <div class="ibox-tools"></div>
+    </div>
+    <div class="ibox-content">
+
     {{template "[[.controllerName]]/quick-bar.html" .}}
     <table class="table table-bordered table-striped table-highlight ">
       <thead>
       <tr>
-        <th><input type="checkbox" class="all-checker"></th>[[range $field := .class.Fields]][[if needDisplay $field]]
+        <th><input type="checkbox" id="[[underscore .controllerName]]-all-checker"></th>[[range $field := .class.Fields]][[if needDisplay $field]]
         <th><nobr>[[localizeName $field]]</nobr></th>[[end]][[end]]
         <th>操作</th>
       </tr>
       </thead>
       {{range $v := .[[camelizeDownFirst .modelName]]}}
       <tr>
-        <td><input type="checkbox" class="row-checker" key="{{$v.ID}}" url="{{url "[[.controllerName]].Edit" $v.ID}}" id="row-checker"></td>
+        <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker" key="{{$v.ID}}" url="{{url "[[.controllerName]].Edit" $v.ID}}"></td>
         [[range $column := .class.Fields]][[if needDisplay $column]]
         <td>{{$v.[[goify $column.Name true]]}}</td>[[end]][[end]]
         <td>
           <a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>
-          <form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete"  $v.ID}}" method="POST" class="form-horizontal">
+          <form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete"  $v.ID}}" method="POST" class="form-horizontal" style='display:inline;'>
             <input type="hidden" name="_method" value="DELETE">
             <input type="hidden" name="id" value="{{$v.ID}}">
               <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">
@@ -823,43 +853,38 @@ var viewIndexText = `{{set . "title" "[[.controllerName]]"}}
 
 var viewNewText = `{{set . "title" "新建[[.controllerName]]"}}
 {{append . "moreStyles" "/public/css/form.css"}}
-{{append . "moreScripts" "/self/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
+{{append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
 {{template "[[if .layouts]][[.layouts]][[end]]header.html" .}}
-<div class="widget stacked">
-    <div class="widget-header">
-        <h3>新建[[.controllerName]]</h3>
+<div class="ibox float-e-margins">
+    <div class="ibox-title">
+        [[new_label .class]]
+        <div class="ibox-tools"></div>
     </div>
-    <div class="widget-content">
-            <form action="{{url "[[.controllerName]].Create"}}" method="post" class="form-horizontal" id="insert">
-            {{template "[[.controllerName]]/edit_fields.html" .}}
-            <div class="control-group">
-                <div class="controls">
-                    <button type="submit" class="btn btn-info">插入</button>
-                </div>
+    <div class="ibox-content">
+        <form action="{{url "[[.controllerName]].Create" }}" method="POST" class="form-horizontal" id="[[underscore .controllerName]]-insert">        
+        {{template "[[.controllerName]]/edit_fields.html" .}}
+        <div class="form-group">
+            <div class="col-lg-offset-2 col-lg-10">
+                <button type="submit" class="btn btn-info controls">新建</button>
+                <a href="{{url "[[.controllerName]].Index" }}" class="btn btn-info controls">取消</a>
             </div>
-            </form>
+        </div>
+        </form>
     </div>
 </div>
 {{template "[[if .layouts]][[.layouts]][[end]]footer.html" .}}`
 
-var viewQuickText = `<div class="quick-bar">
-    <ul class="quick-actions ">
-        <li>
-            <a id='[[underscore .controllerName]]-new' href='{{url "[[.controllerName]].New"}}'  class="grid-action" method="" mode="*" confirm="" client="false" target="_self">
-                <i class="icon-add"></i>添加
-            </a>
-        </li>
-        <li>
-            <a id='[[underscore .controllerName]]-edit' href='' url='{{url "[[.controllerName]].Edit"}}'  class="grid-action update" method="" mode="1" confirm="" client="false" target="_self">
-                <i class="icon-edit"></i>编辑
-            </a>
-        </li>
-        <li>
-            <a id='[[underscore .controllerName]]-delete' href='' url='{{url "[[.controllerName]].DeleteByIDs"}}'  class="grid-action delete" mode="+" target="_self">
-                <i class="icon-delete"></i> 删除
-            </a>
-        </li>
-    </ul>
+var viewQuickText = `<div class="quick-actions btn-group m-b">
+    <a id='[[underscore .controllerName]]-new' href='{{url "[[.controllerName]].New"}}'  class="btn btn-outline btn-default" method="" mode="*" confirm="" client="false" target="_self">
+        <i class="fa fa-add"></i>添加
+    </a>
+    <a id='[[underscore .controllerName]]-edit' href='' url='{{url "[[.controllerName]].Edit"}}'  class="btn btn-outline btn-default" method="" mode="1" confirm="" client="false" target="_self">
+        <i class="fa fa-edit"></i>编辑
+    </a>
+    <a id='[[underscore .controllerName]]-delete' href='' url='{{url "[[.controllerName]].DeleteByIDs"}}'  class="btn btn-outline btn-default" mode="+" target="_self">
+        <i class="fa fa-trash"></i> 删除
+    </a>
+</div>
     <!--
     <ul class="quick-actions ">
         <form action="" method="get" class="form-action" id="[[underscore .controllerName]]-quick-form" >
@@ -874,11 +899,21 @@ var viewQuickText = `<div class="quick-bar">
                 </a>
             </li>
         </form>
-    </ul>-->
-</div>`
+    </ul>-->`
 
 var viewJsText = `$(function () {
     var urlPrefix = $("#urlPrefix").val();
+
+    $("#[[underscore .controllerName]]-all-checker").on("click", function () {
+        var all_checked =  this.checked
+        $(".[[underscore .controllerName]]-row-checker").each(function(){
+            this.checked = all_checked
+            return true;
+        });
+        return true;
+    });
+
+
     $("#[[underscore .controllerName]]-delete").on("click", function () {
         bootbox.confirm("确认删除选定信息？", function(result){
             if (!result) {
@@ -893,7 +928,7 @@ var viewJsText = `$(function () {
             inputField.name = "_method";
             inputField.value = "DELETE";
 
-            $("#row-checker:checked").each(function (i) {
+            $(".[[underscore .controllerName]]-row-checker:checked").each(function (i) {
                 var inputField = document.createElement("input");
                 inputField.type = "hidden";
                 inputField.name = "id_list[]";
@@ -908,7 +943,7 @@ var viewJsText = `$(function () {
     });
 
     $("#[[underscore .controllerName]]-edit").on("click", function () {
-        var elements = $("#row-checker:checked");
+        var elements = $(".[[underscore .controllerName]]-row-checker:checked");
         if (elements.length == 1) {
             window.location.href= elements.first().attr("url");
         } else if (elements.length == 0) {
@@ -1265,9 +1300,23 @@ func (db *DB) [[pluralize $class.Name]]() *orm.Collection {
 
 func InitTables(engine *xorm.Engine) error {
   beans := []interface{}{[[range $class := .classes]]
-  &[[$class.Name]]{},
-[[end]]}
-  return engine.CreateTables(beans...)
+    &[[$class.Name]]{},[[end]]
+  }
+
+  for _, bean := range beans {
+    if err := engine.CreateIndexes(bean); err != nil {
+      if !strings.Contains(err.Error(), "already exists") {
+        return err
+      }
+    }
+
+    if err := engine.CreateUniques(bean); err != nil {
+      if !strings.Contains(err.Error(), "already exists") {
+        return err
+      }
+    }
+  }
+  return nil
 }
 `
 

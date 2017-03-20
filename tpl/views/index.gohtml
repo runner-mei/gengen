@@ -7,25 +7,30 @@
 {{append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
 {{template "[[if .layouts]][[.layouts]][[end]]header.html" .}}
 
-<div class="widget stacked">
-  <div class="gui-list">
+<div class="ibox float-e-margins">
+    <div class="ibox-title">
+        [[index_label .class]]
+        <div class="ibox-tools"></div>
+    </div>
+    <div class="ibox-content">
+
     {{template "[[.controllerName]]/quick-bar.html" .}}
     <table class="table table-bordered table-striped table-highlight ">
       <thead>
       <tr>
-        <th><input type="checkbox" class="all-checker"></th>[[range $field := .class.Fields]][[if needDisplay $field]]
+        <th><input type="checkbox" id="[[underscore .controllerName]]-all-checker"></th>[[range $field := .class.Fields]][[if needDisplay $field]]
         <th><nobr>[[localizeName $field]]</nobr></th>[[end]][[end]]
         <th>操作</th>
       </tr>
       </thead>
       {{range $v := .[[camelizeDownFirst .modelName]]}}
       <tr>
-        <td><input type="checkbox" class="row-checker" key="{{$v.ID}}" url="{{url "[[.controllerName]].Edit" $v.ID}}" id="row-checker"></td>
+        <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker" key="{{$v.ID}}" url="{{url "[[.controllerName]].Edit" $v.ID}}"></td>
         [[range $column := .class.Fields]][[if needDisplay $column]]
         <td>{{$v.[[goify $column.Name true]]}}</td>[[end]][[end]]
         <td>
           <a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>
-          <form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete"  $v.ID}}" method="POST" class="form-horizontal">
+          <form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete"  $v.ID}}" method="POST" class="form-horizontal" style='display:inline;'>
             <input type="hidden" name="_method" value="DELETE">
             <input type="hidden" name="id" value="{{$v.ID}}">
               <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">

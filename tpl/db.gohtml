@@ -20,7 +20,21 @@ func (db *DB) [[pluralize $class.Name]]() *orm.Collection {
 
 func InitTables(engine *xorm.Engine) error {
   beans := []interface{}{[[range $class := .classes]]
-  &[[$class.Name]]{},
-[[end]]}
-  return engine.CreateTables(beans...)
+    &[[$class.Name]]{},[[end]]
+  }
+
+  for _, bean := range beans {
+    if err := engine.CreateIndexes(bean); err != nil {
+      if !strings.Contains(err.Error(), "already exists") {
+        return err
+      }
+    }
+
+    if err := engine.CreateUniques(bean); err != nil {
+      if !strings.Contains(err.Error(), "already exists") {
+        return err
+      }
+    }
+  }
+  return nil
 }

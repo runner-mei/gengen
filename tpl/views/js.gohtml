@@ -1,5 +1,16 @@
 $(function () {
     var urlPrefix = $("#urlPrefix").val();
+
+    $("#[[underscore .controllerName]]-all-checker").on("click", function () {
+        var all_checked =  this.checked
+        $(".[[underscore .controllerName]]-row-checker").each(function(){
+            this.checked = all_checked
+            return true;
+        });
+        return true;
+    });
+
+
     $("#[[underscore .controllerName]]-delete").on("click", function () {
         bootbox.confirm("确认删除选定信息？", function(result){
             if (!result) {
@@ -14,7 +25,7 @@ $(function () {
             inputField.name = "_method";
             inputField.value = "DELETE";
 
-            $("#row-checker:checked").each(function (i) {
+            $(".[[underscore .controllerName]]-row-checker:checked").each(function (i) {
                 var inputField = document.createElement("input");
                 inputField.type = "hidden";
                 inputField.name = "id_list[]";
@@ -29,7 +40,7 @@ $(function () {
     });
 
     $("#[[underscore .controllerName]]-edit").on("click", function () {
-        var elements = $("#row-checker:checked");
+        var elements = $(".[[underscore .controllerName]]-row-checker:checked");
         if (elements.length == 1) {
             window.location.href= elements.first().attr("url");
         } else if (elements.length == 0) {

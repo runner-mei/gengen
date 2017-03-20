@@ -1,4 +1,4 @@
-
+[[$var := camelizeDownFirst .class.Name]]
 type [[.class.Name]] struct {[[range $field := .class.Fields ]]
   [[goify $field.Name  true]] [[gotype $field.Type]] `json:"[[underscore $field.Name]][[if omitempty $field]],omitempty[[end]]" xorm:"[[underscore $field.Name]][[if eq $field.Name "id"]] pk autoincr[[else if eq $field.Name "created_at"]] created[[else if eq $field.Name "updated_at"]] updated[[end]][[if $field.IsUniquely]][[if ne $field.Name "id"]] unique[[end]][[end]][[if $field.DefaultValue]] default('[[$field.DefaultValue]]')[[end]]"`[[end]]
 }
@@ -8,7 +8,7 @@ func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) TableName() string {
   return "[[if .class.Table]][[.class.Table]][[else]][[pluralize .class.Name | underscore]][[end]]"
 }
 
-func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) Validate(validation *revel.Validation) bool {[[$var := camelizeDownFirst .class.Name]]
+func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) Validate(validation *revel.Validation) bool {
 [[range $column := .class.Fields]]
 [[if ne $column.Name "id"]][[if $column.IsRequired]]
   validation.Required([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
@@ -27,4 +27,12 @@ func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) Validate(validation *r
         [[end]][[end]]
 [[end]][[end]]
   return validation.HasErrors()
+}
+
+func KeyFor[[pluralize .class.Name]](key string) string {
+  switch key {[[range $column := .class.Fields]]
+  case "[[$column.Name]]":
+     return "[[$var]].[[goify $column.Name true]]"[[end]]
+  }
+  return key
 }

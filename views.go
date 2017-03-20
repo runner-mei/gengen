@@ -40,6 +40,24 @@ func (cmd *GenerateViewCommand) genrateView(cls *types.ClassSpec) error {
 		"customPath":     cmd.customPath,
 		"class":          cls}
 	funcs := template.FuncMap{"localizeName": localizeName,
+		"index_label": func(cls *types.ClassSpec) string {
+			if cls.IndexLabel != "" {
+				return cls.IndexLabel
+			}
+			return localizeName(cls)
+		},
+		"new_label": func(cls *types.ClassSpec) string {
+			if cls.NewLabel != "" {
+				return cls.NewLabel
+			}
+			return "新建" + localizeName(cls)
+		},
+		"edit_label": func(cls *types.ClassSpec) string {
+			if cls.EditLabel != "" {
+				return cls.EditLabel
+			}
+			return "编辑" + localizeName(cls)
+		},
 		"isClob": func(f types.FieldSpec) bool {
 			if f.Restrictions != nil {
 				if f.Restrictions.Length > 500 {
@@ -122,9 +140,24 @@ func (cmd *GenerateViewCommand) genrateView(cls *types.ClassSpec) error {
 	return nil
 }
 
-func localizeName(f types.FieldSpec) string {
-	if f.Label != "" {
-		return f.Label
+func localizeName(t interface{}) string {
+	switch f := t.(type) {
+	case types.FieldSpec:
+		if f.Label != "" {
+			return f.Label
+		}
+		return f.Name
+	case *types.FieldSpec:
+		if f.Label != "" {
+			return f.Label
+		}
+		return f.Name
+	case *types.ClassSpec:
+		if f.Label != "" {
+			return f.Label
+		}
+		return f.Name
+	default:
+		panic(fmt.Errorf("arguments of localizeName is unknown(%T: %v)", t, t))
 	}
-	return f.Name
 }

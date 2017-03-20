@@ -2,19 +2,21 @@
 {{append . "moreStyles" "/public/css/form.css"}}
 {{append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
 {{template "[[if .layouts]][[.layouts]][[end]]header.html" .}}
-<div class="widget stacked">
-    <div class="widget-header">
-        <h3>新建[[.controllerName]]</h3>
+<div class="ibox float-e-margins">
+    <div class="ibox-title">
+        [[new_label .class]]
+        <div class="ibox-tools"></div>
     </div>
-    <div class="widget-content">
-            <form action="{{url "[[.controllerName]].Create"}}" method="post" class="form-horizontal" id="insert">
-            {{template "[[.controllerName]]/edit_fields.html" .}}
-            <div class="control-group">
-                <div class="controls">
-                    <button type="submit" class="btn btn-info">插入</button>
-                </div>
+    <div class="ibox-content">
+        <form action="{{url "[[.controllerName]].Create" }}" method="POST" class="form-horizontal" id="[[underscore .controllerName]]-insert">        
+        {{template "[[.controllerName]]/edit_fields.html" .}}
+        <div class="form-group">
+            <div class="col-lg-offset-2 col-lg-10">
+                <button type="submit" class="btn btn-info controls">新建</button>
+                <a href="{{url "[[.controllerName]].Index" }}" class="btn btn-info controls">取消</a>
             </div>
-            </form>
+        </div>
+        </form>
     </div>
 </div>
 {{template "[[if .layouts]][[.layouts]][[end]]footer.html" .}}

@@ -1,19 +1,21 @@
 {{set . "title" "编辑[[.controllerName]]"}}
 {{append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
 {{template "[[if .layouts]][[.layouts]][[end]]header.html" .}}
-<div class="widget stacked">
-    <div class="widget-header">
-        <h3>编辑[[.controllerName]]</h3>
+<div class="ibox float-e-margins">
+    <div class="ibox-title">
+        [[edit_label .class]]
+        <div class="ibox-tools"></div>
     </div>
-    <div class="widget-content">
-        <form action="{{url "[[.controllerName]].Update" }}" method="POST" class="form-horizontal" id="insert">
+    <div class="ibox-content">
+        <form action="{{url "[[.controllerName]].Update" }}" method="POST" class="form-horizontal" id="[[underscore .controllerName]]-edit">
         <input type="hidden" name="_method" value="PUT">
         {{with $field := field "[[camelizeDownFirst .class.Name]].ID" .}}<input type="hidden" name="{{$field.Name}}" value="{{if $field.Flash}}{{$field.Flash}}{{else}}{{$field.Value}}{{end}}">{{end}}
         {{template "[[.controllerName]]/edit_fields.html" .}}
-        <div class="controls-group">
-            <div class="controls controls-row">
+        
+        <div class="form-group">
+            <div class="col-lg-offset-2 col-lg-10">
                 <button type="submit" class="btn btn-info controls">修改</button>
-                <button type="submit" class="btn btn-info controls">取消</button>
+                <a href="{{url "[[.controllerName]].Index" }}" class="btn btn-info controls">取消</a>
             </div>
         </div>
         </form>

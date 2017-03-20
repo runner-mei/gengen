@@ -9,8 +9,11 @@ import (
 )
 
 type ClassSpec struct {
-	Super        string      `json:"super,omitempty" yaml:"super,omitempty"`
 	Name         string      `json:"name" yaml:"name"`
+	Label        string      `json:"label,omitempty" ymal:"label,omitempty"`
+	IndexLabel   string      `json:"index_label" yaml:"index_label"`
+	NewLabel     string      `json:"new_label,omitempty" yaml:"new_label,omitempty"`
+	EditLabel    string      `json:"edit_label,omitempty" yaml:"edit_label,omitempty"`
 	Table        string      `json:"table,omitempty" yaml:"table,omitempty"`
 	IsAbstractly bool        `json:"abstract,omitempty" yaml:"abstract,omitempty"`
 	Keys         [][]string  `json:"keys,omitempty" yaml:"keys,omitempty"`

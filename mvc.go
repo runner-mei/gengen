@@ -44,6 +44,7 @@ func (cmd *GenerateMVCCommand) Run(args []string) error {
 	ctl.controller = cmd.controller
 	ctl.projectPath = cmd.projectPath
 	ctl.output = filepath.Join(cmd.output, "app", "controllers")
+	ut.CopyFrom(&cmd.baseCommand)
 	ut.ns = "tests"
 	// ut.controller = cmd.controller
 	ut.projectPath = cmd.projectPath
