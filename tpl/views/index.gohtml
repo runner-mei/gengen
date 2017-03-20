@@ -20,7 +20,7 @@
       <tr>
         <th><input type="checkbox" id="[[underscore .controllerName]]-all-checker"></th>[[range $field := .class.Fields]][[if needDisplay $field]]
         <th><nobr>[[localizeName $field]]</nobr></th>[[end]][[end]]
-        <th>操作</th>
+        {{if current_user_has_permission_with "[[underscore .controllerName]]" "edit" "del"}}<th>操作</th>{{end}}
       </tr>
       </thead>
       {{range $v := .[[camelizeDownFirst .modelName]]}}
@@ -28,16 +28,16 @@
         <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker" key="{{$v.ID}}" url="{{url "[[.controllerName]].Edit" $v.ID}}"></td>
         [[range $column := .class.Fields]][[if needDisplay $column]]
         <td>{{$v.[[goify $column.Name true]]}}</td>[[end]][[end]]
-        <td>
-          <a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>
-          <form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete"  $v.ID}}" method="POST" class="form-horizontal" style='display:inline;'>
+        {{if current_user_has_permission_with "[[underscore .controllerName]]" "edit" "del"}}<td>
+          {{if current_user_has_edit_permission "[[underscore .controllerName]]"}}<a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>{{end}}
+          {{if current_user_has_del_permission "[[underscore .controllerName]]"}}<form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete"  $v.ID}}" method="POST" class="form-horizontal" style='display:inline;'>
             <input type="hidden" name="_method" value="DELETE">
             <input type="hidden" name="id" value="{{$v.ID}}">
               <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">
                 <i class="icon-search"></i> 删除
               </a>
-            </form>
-        </td>
+            </form>{{end}}
+        </td>{{end}}
       </tr>
       {{end}}
     </table>
