@@ -35,8 +35,8 @@ func (c [[.controllerName]]) Index(pageIndex int, pageSize int) revel.Result {
 
   var [[camelizeDownFirst .modelName]] []models.[[.class.Name]]
   err = c.Lifecycle.DB.[[.modelName]]().Where().
-    Limit(pageSize).
     Offset(pageIndex * pageSize).
+    Limit(pageSize).
     All(&[[camelizeDownFirst .modelName]])
   if err != nil {
     c.Flash.Error(err.Error())

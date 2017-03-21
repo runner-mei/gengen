@@ -9,9 +9,8 @@
     <div class="ibox-content">
         <form action="{{url "[[.controllerName]].Update" }}" method="POST" class="form-horizontal" id="[[underscore .controllerName]]-edit">
         <input type="hidden" name="_method" value="PUT">
-        {{with $field := field "[[camelizeDownFirst .class.Name]].ID" .}}<input type="hidden" name="{{$field.Name}}" value="{{if $field.Flash}}{{$field.Flash}}{{else}}{{$field.Value}}{{end}}">{{end}}
+        {{hidden_field . "[[camelizeDownFirst .class.Name]].ID"}}
         {{template "[[.controllerName]]/edit_fields.html" .}}
-        
         <div class="form-group">
             <div class="col-lg-offset-2 col-lg-10">
                 <button type="submit" class="btn btn-info controls">修改</button>

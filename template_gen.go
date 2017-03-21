@@ -781,9 +781,8 @@ var viewEditText = `{{set . "title" "编辑[[.controllerName]]"}}
     <div class="ibox-content">
         <form action="{{url "[[.controllerName]].Update" }}" method="POST" class="form-horizontal" id="[[underscore .controllerName]]-edit">
         <input type="hidden" name="_method" value="PUT">
-        {{with $field := field "[[camelizeDownFirst .class.Name]].ID" .}}<input type="hidden" name="{{$field.Name}}" value="{{if $field.Flash}}{{$field.Flash}}{{else}}{{$field.Value}}{{end}}">{{end}}
+        {{hidden_field . "[[camelizeDownFirst .class.Name]].ID"}}
         {{template "[[.controllerName]]/edit_fields.html" .}}
-        
         <div class="form-group">
             <div class="col-lg-offset-2 col-lg-10">
                 <button type="submit" class="btn btn-info controls">修改</button>
@@ -973,7 +972,7 @@ type [[.controllerName]]Test struct {
 	BaseTest
 }
 
-func (t [[.controllerName]]Test) Test[[.controllerName]]Index() {
+func (t [[.controllerName]]Test) TestIndex() {
 	t.ClearTable("[[tableName .class]]")
 	t.LoadFiles("tests/fixtures/[[underscore .controllerName]].yaml")	
 	//conds := EQU{"name": "这是一个规则名,请替换成正确的值"}
@@ -994,15 +993,14 @@ func (t [[.controllerName]]Test) Test[[.controllerName]]Index() {
 	t.AssertContains(fmt.Sprint([[$varName]].[[goify $column.Name true]]))[[end]][[end]]
 }
 
-func (t [[.controllerName]]Test) Test[[.controllerName]]New() {
+func (t [[.controllerName]]Test) TestNew() {
 	t.ClearTable("[[tableName .class]]")
-	t.LoadFiles("tests/fixtures/[[underscore .controllerName]].yaml")
 	t.Get(t.ReverseUrl("[[.controllerName]].New"))
 	t.AssertOk()
 	t.AssertContentType("text/html; charset=utf-8")
 }
 
-func (t [[.controllerName]]Test) Test[[.controllerName]]Create() {
+func (t [[.controllerName]]Test) TestCreate() {
 	t.ClearTable("[[tableName .class]]")
 	v := url.Values{}
 	[[range $column := .class.Fields]][[if isID $column]][[else]]
@@ -1025,7 +1023,7 @@ func (t [[.controllerName]]Test) Test[[.controllerName]]Create() {
 	t.AssertEqual(fmt.Sprint([[$varName]].[[goify $column.Name true]]), v.Get("[[$varName]].[[goify $column.Name true]]"))[[end]][[end]]
 }
 
-func (t [[.controllerName]]Test) Test[[.controllerName]]Edit() {
+func (t [[.controllerName]]Test) TestEdit() {
 	t.ClearTable("[[tableName .class]]")
 	t.LoadFiles("tests/fixtures/[[underscore .controllerName]].yaml")
 	//conds := EQU{"name": "这是一个规则名,请替换成正确的值"}
@@ -1045,7 +1043,7 @@ func (t [[.controllerName]]Test) Test[[.controllerName]]Edit() {
 	t.AssertContains(fmt.Sprint([[$varName]].[[goify $column.Name true]]))[[end]][[end]]
 }
 
-func (t [[.controllerName]]Test) Test[[.controllerName]]Update() {
+func (t [[.controllerName]]Test) TestUpdate() {
 	t.ClearTable("[[tableName .class]]")
 	t.LoadFiles("tests/fixtures/[[underscore .controllerName]].yaml")
 	//conds := EQU{"name": "这是一个规则名,请替换成正确的值"}
@@ -1073,27 +1071,27 @@ func (t [[.controllerName]]Test) Test[[.controllerName]]Update() {
   [[end]][[end]]
 }
 
-func (t [[.controllerName]]Test) Test[[.controllerName]]Delete() {
+func (t [[.controllerName]]Test) TestDelete() {
 	t.ClearTable("[[tableName .class]]")
 	t.LoadFiles("tests/fixtures/[[underscore .controllerName]].yaml")
 	//conds := EQU{"name": "这是一个规则名,请替换成正确的值"}
 	conds := EQU{}
 	ruleId := t.GetIDFromTable("[[tableName .class]]", conds)
 	t.Delete(t.ReverseUrl("[[.controllerName]].Delete", ruleId))
-	t.AssertStatus(http.StatusFound)
+	t.AssertStatus(http.StatusOK)
 	//t.AssertContentType("application/json; charset=utf-8")
 	count := t.GetCountFromTable("[[tableName .class]]", nil)
 	t.Assertf(count == 0, "count != 0, actual is %v", count)
 }
 
-func (t [[.controllerName]]Test) Test[[.controllerName]]DeleteByIDs() {
+func (t [[.controllerName]]Test) TestDeleteByIDs() {
 	t.ClearTable("[[tableName .class]]")
 	t.LoadFiles("tests/fixtures/[[underscore .controllerName]].yaml")
 	//conds := EQU{"name": "这是一个规则名,请替换成正确的值"}
 	conds := EQU{}
 	ruleId := t.GetIDFromTable("[[tableName .class]]", conds)
 	t.Delete(t.ReverseUrl("[[.controllerName]].DeleteByIDs", []interface{}{ruleId}))
-	t.AssertStatus(http.StatusFound)
+	t.AssertStatus(http.StatusOK)
 	//t.AssertContentType("application/json; charset=utf-8")
 	count := t.GetCountFromTable("[[tableName .class]]", nil)
 	t.Assertf(count == 0, "count != 0, actual is %v", count)
