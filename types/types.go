@@ -1,10 +1,8 @@
-package main
+package types
 
 import (
 	"strings"
 	"unicode"
-
-	"github.com/runner-mei/gengen/types"
 )
 
 var commonInitialisms = map[string]bool{
@@ -205,5 +203,5 @@ func fixReserved(w string) string {
 }
 
 func GoTypename(t string) string {
-	return types.ToGoTypes[t]
+	return ToGoTypes[t]
 }
