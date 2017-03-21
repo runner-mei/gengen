@@ -1,4 +1,4 @@
-{{set . "title" "[[.controllerName]]"}}
+{{$raw := .}}{{set . "title" "[[.controllerName]]"}}
 {{if eq .RunMode "dev"}}
 {{append . "moreScripts" "/public/js/plugins/bootbox/bootbox.js"}}
 {{else}}
@@ -20,7 +20,7 @@
       <tr>
         <th><input type="checkbox" id="[[underscore .controllerName]]-all-checker"></th>[[range $field := .class.Fields]][[if needDisplay $field]]
         <th><nobr>[[localizeName $field]]</nobr></th>[[end]][[end]]
-        {{if current_user_has_permission_with "[[underscore .controllerName]]" "edit" "del"}}<th>操作</th>{{end}}
+        {{if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}<th>操作</th>{{end}}
       </tr>
       </thead>
       {{range $v := .[[camelizeDownFirst .modelName]]}}
@@ -28,9 +28,9 @@
         <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker" key="{{$v.ID}}" url="{{url "[[.controllerName]].Edit" $v.ID}}"></td>
         [[range $column := .class.Fields]][[if needDisplay $column]]
         <td>{{$v.[[goify $column.Name true]]}}</td>[[end]][[end]]
-        {{if current_user_has_permission_with "[[underscore .controllerName]]" "edit" "del"}}<td>
-          {{if current_user_has_edit_permission "[[underscore .controllerName]]"}}<a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>{{end}}
-          {{if current_user_has_del_permission "[[underscore .controllerName]]"}}<form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete"  $v.ID}}" method="POST" class="form-horizontal" style='display:inline;'>
+        {{if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}<td>
+          {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]"}}<a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>{{end}}
+          {{if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}<form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-horizontal" style='display:inline;'>
             <input type="hidden" name="_method" value="DELETE">
             <input type="hidden" name="id" value="{{$v.ID}}">
               <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">

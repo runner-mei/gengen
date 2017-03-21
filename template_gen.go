@@ -802,7 +802,7 @@ var viewFieldsText = `[[define "lengthLimit"]][[end]][[$instaneName := camelizeD
 [[else if eq $column.Type "password" ]]{{password_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
 [[else if editDisabled $column]][[end]][[end]]`
 
-var viewIndexText = `{{set . "title" "[[.controllerName]]"}}
+var viewIndexText = `{{$raw := .}}{{set . "title" "[[.controllerName]]"}}
 {{if eq .RunMode "dev"}}
 {{append . "moreScripts" "/public/js/plugins/bootbox/bootbox.js"}}
 {{else}}
@@ -824,7 +824,7 @@ var viewIndexText = `{{set . "title" "[[.controllerName]]"}}
       <tr>
         <th><input type="checkbox" id="[[underscore .controllerName]]-all-checker"></th>[[range $field := .class.Fields]][[if needDisplay $field]]
         <th><nobr>[[localizeName $field]]</nobr></th>[[end]][[end]]
-        {{if current_user_has_permission_with "[[underscore .controllerName]]" "edit" "del"}}<th>操作</th>{{end}}
+        {{if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}<th>操作</th>{{end}}
       </tr>
       </thead>
       {{range $v := .[[camelizeDownFirst .modelName]]}}
@@ -832,9 +832,9 @@ var viewIndexText = `{{set . "title" "[[.controllerName]]"}}
         <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker" key="{{$v.ID}}" url="{{url "[[.controllerName]].Edit" $v.ID}}"></td>
         [[range $column := .class.Fields]][[if needDisplay $column]]
         <td>{{$v.[[goify $column.Name true]]}}</td>[[end]][[end]]
-        {{if current_user_has_permission_with "[[underscore .controllerName]]" "edit" "del"}}<td>
-          {{if current_user_has_edit_permission "[[underscore .controllerName]]"}}<a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>{{end}}
-          {{if current_user_has_del_permission "[[underscore .controllerName]]"}}<form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete"  $v.ID}}" method="POST" class="form-horizontal" style='display:inline;'>
+        {{if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}<td>
+          {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]"}}<a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>{{end}}
+          {{if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}<form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-horizontal" style='display:inline;'>
             <input type="hidden" name="_method" value="DELETE">
             <input type="hidden" name="id" value="{{$v.ID}}">
               <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">
@@ -875,13 +875,13 @@ var viewNewText = `{{set . "title" "新建[[.controllerName]]"}}
 {{template "[[if .layouts]][[.layouts]][[end]]footer.html" .}}`
 
 var viewQuickText = `<div class="quick-actions btn-group m-b">
-    {{if current_user_has_new_permission "[[underscore .controllerName]]"}}<a id='[[underscore .controllerName]]-new' href='{{url "[[.controllerName]].New"}}'  class="btn btn-outline btn-default" method="" mode="*" confirm="" client="false" target="_self">
+    {{if current_user_has_new_permission . "[[underscore .controllerName]]"}}<a id='[[underscore .controllerName]]-new' href='{{url "[[.controllerName]].New"}}'  class="btn btn-outline btn-default" method="" mode="*" confirm="" client="false" target="_self">
         <i class="fa fa-add"></i>添加
     </a>{{end}}
-    {{if current_user_has_edit_permission "[[underscore .controllerName]]"}}<a id='[[underscore .controllerName]]-edit' href='' url='{{url "[[.controllerName]].Edit"}}'  class="btn btn-outline btn-default" method="" mode="1" confirm="" client="false" target="_self">
+    {{if current_user_has_edit_permission . "[[underscore .controllerName]]"}}<a id='[[underscore .controllerName]]-edit' href='' url='{{url "[[.controllerName]].Edit"}}'  class="btn btn-outline btn-default" method="" mode="1" confirm="" client="false" target="_self">
         <i class="fa fa-edit"></i>编辑
     </a>{{end}}
-    {{if current_user_has_del_permission "[[underscore .controllerName]]"}}<a id='[[underscore .controllerName]]-delete' href='' url='{{url "[[.controllerName]].DeleteByIDs"}}'  class="btn btn-outline btn-default" mode="+" target="_self">
+    {{if current_user_has_del_permission . "[[underscore .controllerName]]"}}<a id='[[underscore .controllerName]]-delete' href='' url='{{url "[[.controllerName]].DeleteByIDs"}}'  class="btn btn-outline btn-default" mode="+" target="_self">
         <i class="fa fa-trash"></i> 删除
     </a>{{end}}
 </div>
