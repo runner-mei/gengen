@@ -18,6 +18,41 @@ type ClassSpec struct {
 	IsAbstractly bool        `json:"abstract,omitempty" yaml:"abstract,omitempty"`
 	Keys         [][]string  `json:"keys,omitempty" yaml:"keys,omitempty"`
 	Fields       []FieldSpec `json:"fields,omitempty" yaml:"fields,omitempty"`
+
+	HasMany             []HasMany             `json:"hasMany,omitempty" yaml:"hasMany,omitempty"`
+	BelongsTo           []BelongsTo           `json:"belongsTo,omitempty" yaml:"belongsTo,omitempty"`
+	HasAndBelongsToMany []HasAndBelongsToMany `json:"hasAndBelongsToMany,omitempty" yaml:"hasAndBelongsToMany,omitempty"`
+}
+
+type HasMany struct {
+	Target      string `json:"target" yaml:"target"`
+	Name        string `json:"name,omitempty" yaml:"name,omitempty"`
+	ForeignKey  string `json:"foreignKey,omitempty" yaml:"foreignKey,omitempty"`
+	Polymorphic string `json:"polymorphic,omitempty" yaml:"polymorphic,omitempty"`
+}
+
+type BelongsTo struct {
+	Target string `json:"target" yaml:"target"`
+	Name   string `json:"name,omitempty" yaml:"name,omitempty"`
+}
+
+func (belongsTo *BelongsTo) AttributeName(json bool) string {
+	if belongsTo.Name != "" {
+		if json {
+			return Underscore(belongsTo.Name)
+		}
+		return CamelCase(belongsTo.Name)
+	}
+	if json {
+		return Underscore(belongsTo.Target) + "_id"
+	}
+	return CamelCase(belongsTo.Name) + "ID"
+}
+
+type HasAndBelongsToMany struct {
+	Target     string `json:"target" yaml:"target"`
+	ForeignKey string `json:"foreignKey,omitempty" yaml:"foreignKey,omitempty"`
+	Through    string `json:"through,omitempty" yaml:"through,omitempty"`
 }
 
 type FieldSpec struct {
@@ -108,4 +143,5 @@ var ToGoTypes = map[string]string{"boolean": "bool",
 	"objectID":        "int64",
 	"biginteger":      "int",
 	"bigInteger":      "int",
+	"map":             "map[string]interface{}",
 	"dynamic":         ""}

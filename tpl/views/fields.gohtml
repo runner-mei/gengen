@@ -3,4 +3,5 @@
 [[end]][[else if eq $column.Type "integer" "number" "biginteger" ]]{{number_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
 [[else if eq $column.Type "boolean" "bool" ]]{{checkbox_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
 [[else if eq $column.Type "password" ]]{{password_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
+[[else if eq $column.Type "map" ]]{{map_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
 [[else if editDisabled $column]][[end]][[end]]

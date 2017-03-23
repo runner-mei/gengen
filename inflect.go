@@ -29,3 +29,11 @@ func Capitalize(word string) string {
 func Typeify(word string) string {
 	return types.Typeify(word)
 }
+
+func Goify(str string, firstUpper bool) string {
+	return types.Goify(str, firstUpper)
+}
+
+func GoTypename(t string) string {
+	return types.GoTypename(t)
+}
