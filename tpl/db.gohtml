@@ -23,6 +23,10 @@ func InitTables(engine *xorm.Engine) error {
     &[[$class.Name]]{},[[end]]
   }
 
+  if err := engine.CreateTables(beans...); err != nil {
+    return err
+  }
+
   for _, bean := range beans {
     if err := engine.CreateIndexes(bean); err != nil {
       if !strings.Contains(err.Error(), "already exists") {
