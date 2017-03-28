@@ -579,9 +579,11 @@ var handler = ``
 
 var structText = `[[$var := camelizeDownFirst .class.Name]]
 type [[.class.Name]] struct {[[range $field := .class.Fields ]]
-  [[goify $field.Name  true]] [[gotype $field.Type]] ` + "`" + `json:"[[underscore $field.Name]][[if omitempty $field]],omitempty[[end]]" xorm:"[[underscore $field.Name]][[if eq $field.Name "id"]] pk autoincr[[else if eq $field.Name "created_at"]] created[[else if eq $field.Name "updated_at"]] updated[[end]][[if $field.IsUniquely]][[if ne $field.Name "id"]] unique[[end]][[end]][[if $field.DefaultValue]] default('[[$field.DefaultValue]]')[[end]]"` + "`" + `[[end]]
-}
+  [[goify $field.Name  true]] [[gotype $field.Type]] ` + "`" + `json:"[[underscore $field.Name]][[if omitempty $field]],omitempty[[end]]" xorm:"[[underscore $field.Name]][[if eq $field.Name "id"]] pk autoincr[[else if eq $field.Name "created_at"]] created[[else if eq $field.Name "updated_at"]] updated[[end]][[if $field.IsUniquely]][[if ne $field.Name "id"]] unique[[end]][[end]][[if $field.IsRequired]][[if ne $field.Name "id"]] notnull[[end]][[end]][[if $field.DefaultValue]] default('[[$field.DefaultValue]]')[[end]]"` + "`" + `[[end]]
 
+  [[range $belongsTo := .class.BelongsTo ]][[$belongsTo.AttributeName false]] int64 ` + "`" + `json:"[[$belongsTo.AttributeName true]]" xorm:"[[$belongsTo.AttributeName true]]"` + "`" + `
+  [[end]]
+}
 
 func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) TableName() string {
   return "[[if .class.Table]][[.class.Table]][[else]][[pluralize .class.Name | underscore]][[end]]"
@@ -799,6 +801,7 @@ var viewFieldsText = `[[define "lengthLimit"]][[end]][[$instaneName := camelizeD
 [[end]][[else if eq $column.Type "integer" "number" "biginteger" ]]{{number_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
 [[else if eq $column.Type "boolean" "bool" ]]{{checkbox_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
 [[else if eq $column.Type "password" ]]{{password_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
+[[else if eq $column.Type "map" ]]{{map_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
 [[else if editDisabled $column]][[end]][[end]]`
 
 var viewIndexText = `{{$raw := .}}{{set . "title" "[[.controllerName]]"}}
@@ -1299,6 +1302,10 @@ func (db *DB) [[pluralize $class.Name]]() *orm.Collection {
 func InitTables(engine *xorm.Engine) error {
   beans := []interface{}{[[range $class := .classes]]
     &[[$class.Name]]{},[[end]]
+  }
+
+  if err := engine.CreateTables(beans...); err != nil {
+    return err
   }
 
   for _, bean := range beans {

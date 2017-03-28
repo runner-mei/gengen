@@ -203,5 +203,9 @@ func fixReserved(w string) string {
 }
 
 func GoTypename(t string) string {
-	return ToGoTypes[t]
+	gt := ToGoTypes[t]
+	if gt == "" {
+		gt = t
+	}
+	return gt
 }
