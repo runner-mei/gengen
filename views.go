@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -101,6 +102,19 @@ func (cmd *GenerateViewCommand) genrateView(cls *types.ClassSpec) error {
 				return false
 			}
 			return true
+		},
+		"jsEnumeration": func(enumerationValues []types.EnumerationValue) string {
+			bs, err := json.Marshal(enumerationValues)
+			if err != nil {
+				panic(err)
+			}
+			return string(bs)
+		},
+		"hasEnumerations": func(f types.FieldSpec) bool {
+			if f.Restrictions == nil {
+				return false
+			}
+			return len(f.Restrictions.Enumerations) > 0
 		}}
 
 	err := cmd.executeTempate(cmd.override, []string{"views/index"}, funcs, params, filepath.Join(cmd.output, ctlName, "index.html"))

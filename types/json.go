@@ -72,13 +72,18 @@ type FieldSpec struct {
 }
 
 type RestrictionSpec struct {
-	Enumerations []string `json:"enumerations,omitempty" yaml:"enumerations,omitempty"`
-	Pattern      string   `json:"pattern,omitempty" yaml:"pattern,omitempty"`
-	MinValue     string   `json:"minValue,omitempty" yaml:"minValue,omitempty"`
-	MaxValue     string   `json:"maxValue,omitempty" yaml:"maxValue,omitempty"`
-	Length       int      `json:"length,omitempty" json:"length,omitempty"`
-	MinLength    int      `json:"minLength,omitempty" json:"minLength,omitempty"`
-	MaxLength    int      `json:"maxLength,omitempty" json:"maxLength,omitempty"`
+	Enumerations []EnumerationValue `json:"enumerations,omitempty" yaml:"enumerations,omitempty"`
+	Pattern      string             `json:"pattern,omitempty" yaml:"pattern,omitempty"`
+	MinValue     string             `json:"minValue,omitempty" yaml:"minValue,omitempty"`
+	MaxValue     string             `json:"maxValue,omitempty" yaml:"maxValue,omitempty"`
+	Length       int                `json:"length,omitempty" json:"length,omitempty"`
+	MinLength    int                `json:"minLength,omitempty" json:"minLength,omitempty"`
+	MaxLength    int                `json:"maxLength,omitempty" json:"maxLength,omitempty"`
+}
+
+type EnumerationValue struct {
+	Label string `json:"label,omitempty" ymal:"label,omitempty"`
+	Value string `json:"value,omitempty" ymal:"value,omitempty"`
 }
 
 func LoadYAMLFiles(filenames []string) ([]*ClassSpec, error) {
