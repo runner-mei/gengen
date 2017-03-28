@@ -115,6 +115,22 @@ func (cmd *GenerateViewCommand) genrateView(cls *types.ClassSpec) error {
 				return false
 			}
 			return len(f.Restrictions.Enumerations) > 0
+		},
+		"belongsToClassName": func(cls *types.ClassSpec, f types.FieldSpec) string {
+			for _, belongsTo := range cls.BelongsTo {
+				if belongsTo.Name == f.Name {
+					return belongsTo.Target
+				}
+			}
+			return ""
+		},
+		"isBelongsTo": func(cls *types.ClassSpec, f types.FieldSpec) bool {
+			for _, belongsTo := range cls.BelongsTo {
+				if belongsTo.Name == f.Name {
+					return true
+				}
+			}
+			return false
 		}}
 
 	err := cmd.executeTempate(cmd.override, []string{"views/index"}, funcs, params, filepath.Join(cmd.output, ctlName, "index.html"))

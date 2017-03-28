@@ -577,12 +577,12 @@ var ns = `package [[.namespace]]
 
 var handler = ``
 
-var structText = `[[$var := camelizeDownFirst .class.Name]]
+var structText = `[[$var := camelizeDownFirst .class.Name]][[$class := .class]]
 type [[.class.Name]] struct {[[range $field := .class.Fields ]]
   [[goify $field.Name  true]] [[gotype $field.Type]] ` + "`" + `json:"[[underscore $field.Name]][[if omitempty $field]],omitempty[[end]]" xorm:"[[underscore $field.Name]][[if eq $field.Name "id"]] pk autoincr[[else if eq $field.Name "created_at"]] created[[else if eq $field.Name "updated_at"]] updated[[end]][[if $field.IsUniquely]][[if ne $field.Name "id"]] unique[[end]][[end]][[if $field.IsRequired]][[if ne $field.Name "id"]] notnull[[end]][[end]][[if $field.DefaultValue]] default('[[$field.DefaultValue]]')[[end]]"` + "`" + `[[end]]
 
-  [[range $belongsTo := .class.BelongsTo ]][[$belongsTo.AttributeName false]] int64 ` + "`" + `json:"[[$belongsTo.AttributeName true]]" xorm:"[[$belongsTo.AttributeName true]]"` + "`" + `
-  [[end]]
+  [[range $belongsTo := .class.BelongsTo ]][[if fieldExists $class $belongsTo.Name | not ]][[$belongsTo.AttributeName false]] int64 ` + "`" + `json:"[[$belongsTo.AttributeName true]]" xorm:"[[$belongsTo.AttributeName true]]"` + "`" + `
+  [[end]][[end]]
 }
 
 func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) TableName() string {
@@ -593,6 +593,8 @@ func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) Validate(validation *r
 [[range $column := .class.Fields]]
 [[if ne $column.Name "id"]][[if $column.IsRequired]]
   validation.Required([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
+  [[else if eq $column.Format "email"]]
+  validation.Email([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
   [[else if $column.Restrictions]][[if $column.Restrictions.MinLength]]
              validation.MinSize([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MinLength]]).Key("[[$var]].[[goify $column.Name true]]")
         [[end]][[if $column.Restrictions.MaxLength]]
@@ -625,6 +627,7 @@ var controllerText = `import (
   "[[.projectPath]]/app/routes"
 
   "github.com/revel/revel"
+  "github.com/three-plus-three/forms"
   "github.com/runner-mei/orm"
   "upper.io/db.v3"
 )
@@ -669,6 +672,26 @@ func (c [[.controllerName]]) Index(pageIndex int, pageSize int) revel.Result {
 
 // 编辑新建记录
 func (c [[.controllerName]]) New() revel.Result {
+  [[if .class.BelongsTo ]]var err error[[end]][[range $belongsTo := .class.BelongsTo ]]  
+  [[$targetName := pluralize $belongsTo.Target]][[$varName := camelizeDownFirst $targetName]]var [[$varName]] []models.[[$belongsTo.Target]]
+  err = c.Lifecycle.DB.[[$targetName]]().Where().
+    All(&[[$varName]])
+  if err != nil {
+    c.Flash.Error("load [[$belongsTo.Target]] fail, " + err.Error())
+    c.FlashParams()
+    c.ViewArgs["[[$varName]]"] = []forms.InputChoice{}
+  } else {
+    var opt[[$targetName]] = make([]forms.InputChoice, 0, len([[$varName]]))
+    for _, o := range [[$varName]] {
+      opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
+        Value: strconv.FormatInt(int64(o.ID),10),
+        Label: o.Name,
+      })
+    }
+    c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
+  }
+  [[end]]
+
   return c.Render()
 }
 
@@ -710,6 +733,27 @@ func (c [[.controllerName]]) Edit(id int64) revel.Result {
     c.FlashParams()
     return c.Redirect(routes.[[.controllerName]].Index(0, 0))
   }
+
+  [[range $belongsTo := .class.BelongsTo ]]  
+  [[$targetName := pluralize $belongsTo.Target]][[$varName := camelizeDownFirst $targetName]]var [[$varName]] []models.[[$belongsTo.Target]]
+  err = c.Lifecycle.DB.[[$targetName]]().Where().
+    All(&[[$varName]])
+  if err != nil {
+    c.Flash.Error("load [[$belongsTo.Target]] fail, " + err.Error())
+    c.FlashParams()
+    c.ViewArgs["[[$varName]]"] = []forms.InputChoice{}
+  } else {
+    var opt[[$targetName]] = make([]forms.InputChoice, 0, len([[$varName]]))
+    for _, o := range [[$varName]] {
+      opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
+        Value: strconv.FormatInt(int64(o.ID),10),
+        Label: o.Name,
+      })
+    }
+    c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
+  }
+  [[end]]
+
   return c.Render([[camelizeDownFirst .class.Name]])
 }
 
@@ -796,13 +840,21 @@ var viewEditText = `{{set . "title" "编辑[[.controllerName]]"}}
 </div>
 {{template "[[if .layouts]][[.layouts]][[end]]footer.html" .}}`
 
-var viewFieldsText = `[[$instaneName := camelizeDownFirst .class.Name]][[define "lengthLimit"]][[end]][[range $column := .class.Fields]][[if isID $column]][[else if hasEnumerations $column ]]{{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" "[[jsEnumeration $column.Restrictions.Enumerations | js]]" | render}}[[else if eq $column.Type "string" ]][[if isClob $column ]]{{textarea_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" 3  0 | [[template "lengthLimit" $column]] render}}
+var viewFieldsText = `[[$class := .class]][[$instaneName := camelizeDownFirst .class.Name]][[define "lengthLimit"]][[end]][[range $column := .class.Fields]][[if isID $column]][[else if editDisabled $column]][[else if isBelongsTo $class  $column ]]{{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" .[[belongsToClassName $class  $column | pluralize | camelizeDownFirst]] | render}}
+[[else if hasEnumerations $column ]]{{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" "[[jsEnumeration $column.Restrictions.Enumerations | js]]" | render}}
+[[else if $column.Format ]][[if eq $column.Format "ip" ]]{{ipaddress_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
+[[else if eq $column.Format "email" ]]{{email_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
+[[end]][[else if eq $column.Type "string" ]][[if isClob $column ]]{{textarea_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" 3  0 | [[template "lengthLimit" $column]] render}}
 [[else]]{{text_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
-[[end]][[else if eq $column.Type "integer" "number" "biginteger" ]]{{number_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
+[[end]][[else if eq $column.Type "integer" "number" "biginteger" "int" "int64" "uint" "uint64" "float" "float64" ]]{{number_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
 [[else if eq $column.Type "boolean" "bool" ]]{{checkbox_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
 [[else if eq $column.Type "password" ]]{{password_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
+[[else if eq $column.Type "time" ]]{{time_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
+[[else if eq $column.Type "datetime" ]]{{datetime_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
+[[else if eq $column.Type "date" ]]{{date_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
 [[else if eq $column.Type "map" ]]{{map_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
-[[else if editDisabled $column]][[end]][[end]]`
+[[else]]{{text_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
+[[end]][[end]]`
 
 var viewIndexText = `{{$raw := .}}{{set . "title" "[[.controllerName]]"}}
 {{if eq .RunMode "dev"}}
@@ -833,7 +885,7 @@ var viewIndexText = `{{$raw := .}}{{set . "title" "[[.controllerName]]"}}
       <tr>
         <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker" key="{{$v.ID}}" url="{{url "[[.controllerName]].Edit" $v.ID}}"></td>
         [[range $column := .class.Fields]][[if needDisplay $column]]
-        <td>{{$v.[[goify $column.Name true]]}}</td>[[end]][[end]]
+        <td>{{[[if eq $column.Type "date"]]date [[else if eq $column.Type "datetime"]]datetime [[else if eq $column.Type "time"]]time [[end]]$v.[[goify $column.Name true]]}}</td>[[end]][[end]]
         {{if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}<td>
           {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]"}}<a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>{{end}}
           {{if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}<form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-horizontal" style='display:inline;'>
@@ -1169,7 +1221,7 @@ func (t *BaseTest) DataDBRunable() squirrel.Runner{
 }
 
 func (t *BaseTest) ReverseUrl(args ...interface{}) string {
-	s, e := revel.ReverseUrl(args...)
+	s, e := revel.ReverseURL(args...)
 	if e != nil {
 		t.Assertf(false, e.Error())
 		return ""

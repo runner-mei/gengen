@@ -27,7 +27,7 @@
       <tr>
         <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker" key="{{$v.ID}}" url="{{url "[[.controllerName]].Edit" $v.ID}}"></td>
         [[range $column := .class.Fields]][[if needDisplay $column]]
-        <td>{{$v.[[goify $column.Name true]]}}</td>[[end]][[end]]
+        <td>{{[[if eq $column.Type "date"]]date [[else if eq $column.Type "datetime"]]datetime [[else if eq $column.Type "time"]]time [[end]]$v.[[goify $column.Name true]]}}</td>[[end]][[end]]
         {{if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}<td>
           {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]"}}<a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>{{end}}
           {{if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}<form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-horizontal" style='display:inline;'>

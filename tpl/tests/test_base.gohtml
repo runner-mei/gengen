@@ -60,7 +60,7 @@ func (t *BaseTest) DataDBRunable() squirrel.Runner{
 }
 
 func (t *BaseTest) ReverseUrl(args ...interface{}) string {
-	s, e := revel.ReverseUrl(args...)
+	s, e := revel.ReverseURL(args...)
 	if e != nil {
 		t.Assertf(false, e.Error())
 		return ""

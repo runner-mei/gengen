@@ -5,6 +5,7 @@ import (
   "[[.projectPath]]/app/routes"
 
   "github.com/revel/revel"
+  "github.com/three-plus-three/forms"
   "github.com/runner-mei/orm"
   "upper.io/db.v3"
 )
@@ -49,6 +50,26 @@ func (c [[.controllerName]]) Index(pageIndex int, pageSize int) revel.Result {
 
 // 编辑新建记录
 func (c [[.controllerName]]) New() revel.Result {
+  [[if .class.BelongsTo ]]var err error[[end]][[range $belongsTo := .class.BelongsTo ]]  
+  [[$targetName := pluralize $belongsTo.Target]][[$varName := camelizeDownFirst $targetName]]var [[$varName]] []models.[[$belongsTo.Target]]
+  err = c.Lifecycle.DB.[[$targetName]]().Where().
+    All(&[[$varName]])
+  if err != nil {
+    c.Flash.Error("load [[$belongsTo.Target]] fail, " + err.Error())
+    c.FlashParams()
+    c.ViewArgs["[[$varName]]"] = []forms.InputChoice{}
+  } else {
+    var opt[[$targetName]] = make([]forms.InputChoice, 0, len([[$varName]]))
+    for _, o := range [[$varName]] {
+      opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
+        Value: strconv.FormatInt(int64(o.ID),10),
+        Label: o.Name,
+      })
+    }
+    c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
+  }
+  [[end]]
+
   return c.Render()
 }
 
@@ -90,6 +111,27 @@ func (c [[.controllerName]]) Edit(id int64) revel.Result {
     c.FlashParams()
     return c.Redirect(routes.[[.controllerName]].Index(0, 0))
   }
+
+  [[range $belongsTo := .class.BelongsTo ]]  
+  [[$targetName := pluralize $belongsTo.Target]][[$varName := camelizeDownFirst $targetName]]var [[$varName]] []models.[[$belongsTo.Target]]
+  err = c.Lifecycle.DB.[[$targetName]]().Where().
+    All(&[[$varName]])
+  if err != nil {
+    c.Flash.Error("load [[$belongsTo.Target]] fail, " + err.Error())
+    c.FlashParams()
+    c.ViewArgs["[[$varName]]"] = []forms.InputChoice{}
+  } else {
+    var opt[[$targetName]] = make([]forms.InputChoice, 0, len([[$varName]]))
+    for _, o := range [[$varName]] {
+      opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
+        Value: strconv.FormatInt(int64(o.ID),10),
+        Label: o.Name,
+      })
+    }
+    c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
+  }
+  [[end]]
+
   return c.Render([[camelizeDownFirst .class.Name]])
 }
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -41,7 +42,11 @@ func (belongsTo *BelongsTo) AttributeName(json bool) string {
 		if json {
 			return Underscore(belongsTo.Name)
 		}
-		return CamelCase(belongsTo.Name)
+		name := CamelCase(belongsTo.Name)
+		if strings.HasSuffix(name, "Id") {
+			return strings.TrimSuffix(name, "Id") + "ID"
+		}
+		return name
 	}
 	if json {
 		return Underscore(belongsTo.Target) + "_id"
@@ -60,6 +65,7 @@ type FieldSpec struct {
 	Label        string                 `json:"label,omitempty" ymal:"label,omitempty"`
 	Description  string                 `json:"description,omitempty" yaml:"description,omitempty"`
 	Type         string                 `json:"type" yaml:"type"`
+	Format       string                 `json:"format" yaml:"format"`
 	Collection   bool                   `json:"is_array,omitempty" yaml:"is_array,omitempty"`
 	IsEmbedded   bool                   `json:"embedded,omitempty" yaml:"embedded,omitempty"`
 	IsRequired   bool                   `json:"required,omitempty" yaml:"required,omitempty"`
@@ -139,6 +145,7 @@ var ToGoTypes = map[string]string{"boolean": "bool",
 	"string":          "string",
 	"datetime":        "time.Time",
 	"duration":        "time.Duration",
+	"ipaddress":       "net.IP",
 	"ipAddress":       "net.IP",
 	"IPAddress":       "net.IP",
 	"physicalAddress": "[]byte",
