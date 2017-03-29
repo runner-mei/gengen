@@ -8,8 +8,10 @@
         <div class="ibox-tools"></div>
     </div>
     <div class="ibox-content">
-        <form action="{{url "[[.controllerName]].Create" }}" method="POST" class="form-horizontal" id="[[underscore .controllerName]]-insert">        
+        <form action="{{url "[[.controllerName]].Create" }}" method="POST" class="form-horizontal" id="[[underscore .controllerName]]-insert">
+        {{- $inEditMode := .inEditMode}}{{ set . "inEditMode" true}}
         {{template "[[.controllerName]]/edit_fields.html" .}}
+        {{- set . "inEditMode" $inEditMode}}
         <div class="form-group">
             <div class="col-lg-offset-2 col-lg-10">
                 <button type="submit" class="btn btn-info controls">新建</button>

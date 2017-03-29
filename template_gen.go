@@ -866,7 +866,9 @@ var viewEditText = `{{set . "title" "编辑[[.controllerName]]"}}
         <form action="{{url "[[.controllerName]].Update" }}" method="POST" class="form-horizontal" id="[[underscore .controllerName]]-edit">
         <input type="hidden" name="_method" value="PUT">
         {{hidden_field . "[[camelizeDownFirst .class.Name]].ID" | render}}
+        {{- $inEditMode := .inEditMode}}{{ set . "inEditMode" false}}
         {{template "[[.controllerName]]/edit_fields.html" .}}
+        {{- set . "inEditMode" $inEditMode}}
         <div class="form-group">
             <div class="col-lg-offset-2 col-lg-10">
                 <button type="submit" class="btn btn-info controls">修改</button>
@@ -878,20 +880,20 @@ var viewEditText = `{{set . "title" "编辑[[.controllerName]]"}}
 </div>
 {{template "[[if .layouts]][[.layouts]][[end]]footer.html" .}}`
 
-var viewFieldsText = `[[$class := .class]][[$instaneName := camelizeDownFirst .class.Name]][[define "lengthLimit"]][[end]][[range $column := .class.Fields]][[if isID $column]][[else if editDisabled $column]][[else if isBelongsTo $class  $column ]]{{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" .[[belongsToClassName $class  $column | pluralize | camelizeDownFirst]] [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
-[[else if hasEnumerations $column ]]{{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" "[[jsEnumeration $column.Restrictions.Enumerations | js]]" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
+var viewFieldsText = `[[$class := .class]][[$instaneName := camelizeDownFirst .class.Name]][[define "lengthLimit"]][[end]][[range $column := .class.Fields]][[if isID $column]][[else if editDisabled $column]][[else if isBelongsTo $class  $column ]]{{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" .[[belongsToClassName $class  $column | pluralize | camelizeDownFirst]] [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+[[else if hasEnumerations $column ]]{{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" "[[jsEnumeration $column.Restrictions.Enumerations | js]]" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
 [[else if $column.Format ]][[if eq $column.Format "ip" ]]{{ipaddress_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
-[[else if eq $column.Format "email" ]]{{email_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
+[[else if eq $column.Format "email" ]]{{email_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
 [[end]][[else if eq $column.Type "string" ]][[if isClob $column ]]{{textarea_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" 3  0 | [[template "lengthLimit" $column]] render}}
-[[else]]{{text_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
-[[end]][[else if eq $column.Type "integer" "number" "biginteger" "int" "int64" "uint" "uint64" "float" "float64" ]]{{number_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
-[[else if eq $column.Type "boolean" "bool" ]]{{checkbox_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
-[[else if eq $column.Type "password" ]]{{password_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
-[[else if eq $column.Type "time" ]]{{time_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
-[[else if eq $column.Type "datetime" ]]{{datetime_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
-[[else if eq $column.Type "date" ]]{{date_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
-[[else if eq $column.Type "map" ]]{{map_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
-[[else]]{{text_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
+[[else]]{{text_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+[[end]][[else if eq $column.Type "integer" "number" "biginteger" "int" "int64" "uint" "uint64" "float" "float64" ]]{{number_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+[[else if eq $column.Type "boolean" "bool" ]]{{checkbox_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+[[else if eq $column.Type "password" ]]{{password_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+[[else if eq $column.Type "time" ]]{{time_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+[[else if eq $column.Type "datetime" ]]{{datetime_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+[[else if eq $column.Type "date" ]]{{date_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+[[else if eq $column.Type "map" ]]{{map_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+[[else]]{{text_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
 [[end]][[end]]`
 
 var viewIndexText = `{{$raw := .}}{{set . "title" "[[.controllerName]]"}}
@@ -909,7 +911,6 @@ var viewIndexText = `{{$raw := .}}{{set . "title" "[[.controllerName]]"}}
         <div class="ibox-tools"></div>
     </div>
     <div class="ibox-content">
-
     {{template "[[.controllerName]]/quick-bar.html" .}}
     <table class="table table-bordered table-striped table-highlight ">
       <thead>
@@ -932,7 +933,7 @@ var viewIndexText = `{{$raw := .}}{{set . "title" "[[.controllerName]]"}}
         [[- end -]]
         {{if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}<td>
           {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]"}}<a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>{{end}}
-          {{if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}<form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-horizontal" style='display:inline;'>
+          {{if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}<form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-inline" role="form" style="display: inline;">
             <input type="hidden" name="_method" value="DELETE">
             <input type="hidden" name="id" value="{{$v.ID}}">
               <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">
@@ -959,8 +960,10 @@ var viewNewText = `{{set . "title" "新建[[.controllerName]]"}}
         <div class="ibox-tools"></div>
     </div>
     <div class="ibox-content">
-        <form action="{{url "[[.controllerName]].Create" }}" method="POST" class="form-horizontal" id="[[underscore .controllerName]]-insert">        
+        <form action="{{url "[[.controllerName]].Create" }}" method="POST" class="form-horizontal" id="[[underscore .controllerName]]-insert">
+        {{- $inEditMode := .inEditMode}}{{ set . "inEditMode" true}}
         {{template "[[.controllerName]]/edit_fields.html" .}}
+        {{- set . "inEditMode" $inEditMode}}
         <div class="form-group">
             <div class="col-lg-offset-2 col-lg-10">
                 <button type="submit" class="btn btn-info controls">新建</button>
@@ -972,29 +975,31 @@ var viewNewText = `{{set . "title" "新建[[.controllerName]]"}}
 </div>
 {{template "[[if .layouts]][[.layouts]][[end]]footer.html" .}}`
 
-var viewQuickText = `<div class="quick-actions btn-group m-b">
-    {{if current_user_has_new_permission . "[[underscore .controllerName]]"}}<a id='[[underscore .controllerName]]-new' href='{{url "[[.controllerName]].New"}}'  class="btn btn-outline btn-default" method="" mode="*" confirm="" client="false" target="_self">
-        <i class="fa fa-add"></i>添加
-    </a>{{end}}
-    {{if current_user_has_edit_permission . "[[underscore .controllerName]]"}}<a id='[[underscore .controllerName]]-edit' href='' url='{{url "[[.controllerName]].Edit"}}'  class="btn btn-outline btn-default" method="" mode="1" confirm="" client="false" target="_self">
-        <i class="fa fa-edit"></i>编辑
-    </a>{{end}}
-    {{if current_user_has_del_permission . "[[underscore .controllerName]]"}}<a id='[[underscore .controllerName]]-delete' href='' url='{{url "[[.controllerName]].DeleteByIDs"}}'  class="btn btn-outline btn-default" mode="+" target="_self">
-        <i class="fa fa-trash"></i> 删除
-    </a>{{end}}
-    [[- if fieldExists .class "name" -]]
-    <form action="{{url "[[.controllerName]].Index" 0 0}}" method="POST" id='[[underscore .controllerName]]-quick-form' class="btn btn-outline btn-default" style='display:inline;'>
-        <input type="text" name="query">
-        <a href="javascript:document.getElementById('[[underscore .controllerName]]-quick-form').submit()" >
-            <i class="fa fa-search"></i> 查询
+var viewQuickText = `    <div class="quick-actions btn-group m-b">
+        {{- if current_user_has_new_permission . "[[underscore .controllerName]]"}}
+        <a id='[[underscore .controllerName]]-new' href='{{url "[[.controllerName]].New"}}'  class="btn btn-outline btn-default" method="" mode="*" confirm="" client="false" target="_self">
+            <i class="fa fa-add"></i>添加
         </a>
-    </form>
-    [[- end]]
-</div>
-    <!--
-    <ul class="quick-actions ">
-        
-    </ul>-->`
+        {{- end}}
+        {{- if current_user_has_edit_permission . "[[underscore .controllerName]]"}}
+        <a id='[[underscore .controllerName]]-edit' href='' url='{{url "[[.controllerName]].Edit"}}'  class="btn btn-outline btn-default" method="" mode="1" confirm="" client="false" target="_self">
+            <i class="fa fa-edit"></i>编辑
+        </a>
+        {{- end}}
+        {{- if current_user_has_del_permission . "[[underscore .controllerName]]"}}
+        <a id='[[underscore .controllerName]]-delete' href='' url='{{url "[[.controllerName]].DeleteByIDs"}}'  class="btn btn-outline btn-default" mode="+" target="_self">
+            <i class="fa fa-trash"></i> 删除
+        </a>
+        {{- end}}
+        [[- if fieldExists .class "name" -]]
+        <form action="{{url "[[.controllerName]].Index" 0 0}}" method="POST" id='[[underscore .controllerName]]-quick-form' class="form-inline"  style="display: inline;">
+            <input type="text" name="query">
+            <a href="javascript:document.getElementById('[[underscore .controllerName]]-quick-form').submit()" >
+                <i class="fa fa-search"></i> 查询
+            </a>
+        </form>
+        [[- end]]
+    </div>`
 
 var viewJsText = `$(function () {
     var urlPrefix = $("#urlPrefix").val();

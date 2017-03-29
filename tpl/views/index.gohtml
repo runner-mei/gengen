@@ -13,7 +13,6 @@
         <div class="ibox-tools"></div>
     </div>
     <div class="ibox-content">
-
     {{template "[[.controllerName]]/quick-bar.html" .}}
     <table class="table table-bordered table-striped table-highlight ">
       <thead>
@@ -36,7 +35,7 @@
         [[- end -]]
         {{if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}<td>
           {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]"}}<a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>{{end}}
-          {{if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}<form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-horizontal" style='display:inline;'>
+          {{if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}<form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-inline" role="form" style="display: inline;">
             <input type="hidden" name="_method" value="DELETE">
             <input type="hidden" name="id" value="{{$v.ID}}">
               <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">

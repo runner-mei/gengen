@@ -10,7 +10,9 @@
         <form action="{{url "[[.controllerName]].Update" }}" method="POST" class="form-horizontal" id="[[underscore .controllerName]]-edit">
         <input type="hidden" name="_method" value="PUT">
         {{hidden_field . "[[camelizeDownFirst .class.Name]].ID" | render}}
+        {{- $inEditMode := .inEditMode}}{{ set . "inEditMode" false}}
         {{template "[[.controllerName]]/edit_fields.html" .}}
+        {{- set . "inEditMode" $inEditMode}}
         <div class="form-group">
             <div class="col-lg-offset-2 col-lg-10">
                 <button type="submit" class="btn btn-info controls">修改</button>
