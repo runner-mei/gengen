@@ -116,6 +116,14 @@ func (cmd *GenerateViewCommand) genrateView(cls *types.ClassSpec) error {
 			}
 			return len(f.Restrictions.Enumerations) > 0
 		},
+		"fieldExists": func(cls *types.ClassSpec, fieldName string) bool {
+			for _, field := range cls.Fields {
+				if field.Name == fieldName {
+					return true
+				}
+			}
+			return false
+		},
 		"belongsToClassName": func(cls *types.ClassSpec, f types.FieldSpec) string {
 			for _, belongsTo := range cls.BelongsTo {
 				if belongsTo.Name == f.Name {

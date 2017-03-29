@@ -17,13 +17,12 @@ type [[.controllerName]] struct {
 
 // 列出所有记录
 func (c [[.controllerName]]) Index(pageIndex int, pageSize int) revel.Result {
-  //var exprs []db.Expr
-  //if "" != name {
-  //  exprs = append(exprs, models.[[.class.Name]]s.C.NAME.LIKE("%"+name+"%"))
-  //}
+  var cond orm.Cond
+  if name := c.Params.Get("query"); name != "" {
+    cond = orm.Cond{"name LIKE": "%" + name + "%"}
+  }
 
-
-  total, err := c.Lifecycle.DB.[[.modelName]]().Where().Count()
+  total, err := c.Lifecycle.DB.[[.modelName]]().Where().And(cond).Count()
   if err != nil {
     c.Flash.Error(err.Error())
     c.FlashParams()
@@ -36,6 +35,7 @@ func (c [[.controllerName]]) Index(pageIndex int, pageSize int) revel.Result {
 
   var [[camelizeDownFirst .modelName]] []models.[[.class.Name]]
   err = c.Lifecycle.DB.[[.modelName]]().Where().
+    And(cond).
     Offset(pageIndex * pageSize).
     Limit(pageSize).
     All(&[[camelizeDownFirst .modelName]])

@@ -639,13 +639,12 @@ type [[.controllerName]] struct {
 
 // 列出所有记录
 func (c [[.controllerName]]) Index(pageIndex int, pageSize int) revel.Result {
-  //var exprs []db.Expr
-  //if "" != name {
-  //  exprs = append(exprs, models.[[.class.Name]]s.C.NAME.LIKE("%"+name+"%"))
-  //}
+  var cond orm.Cond
+  if name := c.Params.Get("query"); name != "" {
+    cond = orm.Cond{"name LIKE": "%" + name + "%"}
+  }
 
-
-  total, err := c.Lifecycle.DB.[[.modelName]]().Where().Count()
+  total, err := c.Lifecycle.DB.[[.modelName]]().Where().And(cond).Count()
   if err != nil {
     c.Flash.Error(err.Error())
     c.FlashParams()
@@ -658,6 +657,7 @@ func (c [[.controllerName]]) Index(pageIndex int, pageSize int) revel.Result {
 
   var [[camelizeDownFirst .modelName]] []models.[[.class.Name]]
   err = c.Lifecycle.DB.[[.modelName]]().Where().
+    And(cond).
     Offset(pageIndex * pageSize).
     Limit(pageSize).
     All(&[[camelizeDownFirst .modelName]])
@@ -967,21 +967,18 @@ var viewQuickText = `<div class="quick-actions btn-group m-b">
     {{if current_user_has_del_permission . "[[underscore .controllerName]]"}}<a id='[[underscore .controllerName]]-delete' href='' url='{{url "[[.controllerName]].DeleteByIDs"}}'  class="btn btn-outline btn-default" mode="+" target="_self">
         <i class="fa fa-trash"></i> 删除
     </a>{{end}}
+    [[- if fieldExists .class "name" -]]
+    <form action="{{url "[[.controllerName]].Index" 0 0}}" method="POST" id='[[underscore .controllerName]]-quick-form' class="btn btn-outline btn-default" style='display:inline;'>
+            <input type="text" name="query">
+                <a href="javascript:document.getElementById('[[underscore .controllerName]]-quick-form').submit()" class="grid-action" method="" mode="*">
+                    <i class="fa fa-search"></i> 查询
+                </a>
+    </form>
+    [[- end]]
 </div>
     <!--
     <ul class="quick-actions ">
-        <form action="" method="get" class="form-action" id="[[underscore .controllerName]]-quick-form" >
-            <li>
-                <label>
-                    <span>名称</span><input type="text" name="name">
-                </label>
-            </li>
-            <li>
-                <a href="javascript:document.getElementById('[[underscore .controllerName]]-quick-form').submit()" class="grid-action" method="" mode="*">
-                    <i class="icon-search"></i> 查询
-                </a>
-            </li>
-        </form>
+        
     </ul>-->`
 
 var viewJsText = `$(function () {
