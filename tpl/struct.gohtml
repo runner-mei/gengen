@@ -12,24 +12,39 @@ func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) TableName() string {
 
 func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) Validate(validation *revel.Validation) bool {
 [[range $column := .class.Fields]]
-[[if ne $column.Name "id"]][[if $column.IsRequired]]
-  validation.Required([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
-  [[else if eq $column.Format "email"]]
-  validation.Email([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
-  [[else if $column.Restrictions]][[if $column.Restrictions.MinLength]]
-             validation.MinSize([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MinLength]]).Key("[[$var]].[[goify $column.Name true]]")
-        [[end]][[if $column.Restrictions.MaxLength]]
-             validation.MaxSize([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MaxLength]]).Key("[[$var]].[[goify $column.Name true]]")
-        [[end]][[if $column.Restrictions.Length]]
-             validation.Length([[$var]].[[goify $column.Name true]], [[$column.Restrictions.Length]]).Key("[[$var]].[[goify $column.Name true]]")
-        [[end]][[if $column.Restrictions.MaxValue]][[if $column.Restrictions.MinValue]]
-             validation.Range([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MinValue]], [[$column.Restrictions.MaxValue]]).Key("[[$var]].[[goify $column.Name true]]")
-          [[else]]
-             validation.Max([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MaxValue]]).Key("[[$var]].[[goify $column.Name true]]")
-        [[end]][[else if $column.Restrictions.MinValue]]
-             validation.Min([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MinValue]]).Key("[[$var]].[[goify $column.Name true]]")
-        [[end]][[end]]
-[[end]][[end]]
+  [[if ne $column.Name "id"]]
+    [[if $column.IsRequired]]
+      validation.Required([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
+    [[else if eq $column.Format "email"]]
+      [[if not $column.IsRequired]]
+        if "" != [[$var]].[[goify $column.Name true]] {
+          validation.Email([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
+        }
+      [[else]]
+        validation.Email([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
+      [[end]]
+    [[else if $column.Restrictions]]
+      [[if $column.Restrictions.MinLength]]
+           validation.MinSize([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MinLength]]).Key("[[$var]].[[goify $column.Name true]]")
+      [[end]]
+      [[if $column.Restrictions.MaxLength]]
+           validation.MaxSize([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MaxLength]]).Key("[[$var]].[[goify $column.Name true]]")
+      [[end]]
+      [[if $column.Restrictions.Length]]
+           validation.Length([[$var]].[[goify $column.Name true]], [[$column.Restrictions.Length]]).Key("[[$var]].[[goify $column.Name true]]")
+      [[end]]
+      [[if $column.Restrictions.MaxValue]]
+        [[if $column.Restrictions.MinValue]]
+           validation.Range([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MinValue]], [[$column.Restrictions.MaxValue]]).Key("[[$var]].[[goify $column.Name true]]")
+        [[else]]
+           validation.Max([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MaxValue]]).Key("[[$var]].[[goify $column.Name true]]")
+        [[end]]
+      [[else if $column.Restrictions.MinValue]]
+        validation.Min([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MinValue]]).Key("[[$var]].[[goify $column.Name true]]")
+      [[end]]
+    [[end]]
+  [[end]]
+[[end]]
   return validation.HasErrors()
 }
 

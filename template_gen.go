@@ -591,24 +591,39 @@ func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) TableName() string {
 
 func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) Validate(validation *revel.Validation) bool {
 [[range $column := .class.Fields]]
-[[if ne $column.Name "id"]][[if $column.IsRequired]]
-  validation.Required([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
-  [[else if eq $column.Format "email"]]
-  validation.Email([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
-  [[else if $column.Restrictions]][[if $column.Restrictions.MinLength]]
-             validation.MinSize([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MinLength]]).Key("[[$var]].[[goify $column.Name true]]")
-        [[end]][[if $column.Restrictions.MaxLength]]
-             validation.MaxSize([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MaxLength]]).Key("[[$var]].[[goify $column.Name true]]")
-        [[end]][[if $column.Restrictions.Length]]
-             validation.Length([[$var]].[[goify $column.Name true]], [[$column.Restrictions.Length]]).Key("[[$var]].[[goify $column.Name true]]")
-        [[end]][[if $column.Restrictions.MaxValue]][[if $column.Restrictions.MinValue]]
-             validation.Range([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MinValue]], [[$column.Restrictions.MaxValue]]).Key("[[$var]].[[goify $column.Name true]]")
-          [[else]]
-             validation.Max([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MaxValue]]).Key("[[$var]].[[goify $column.Name true]]")
-        [[end]][[else if $column.Restrictions.MinValue]]
-             validation.Min([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MinValue]]).Key("[[$var]].[[goify $column.Name true]]")
-        [[end]][[end]]
-[[end]][[end]]
+  [[if ne $column.Name "id"]]
+    [[if $column.IsRequired]]
+      validation.Required([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
+    [[else if eq $column.Format "email"]]
+      [[if not $column.IsRequired]]
+        if "" != [[$var]].[[goify $column.Name true]] {
+          validation.Email([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
+        }
+      [[else]]
+        validation.Email([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
+      [[end]]
+    [[else if $column.Restrictions]]
+      [[if $column.Restrictions.MinLength]]
+           validation.MinSize([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MinLength]]).Key("[[$var]].[[goify $column.Name true]]")
+      [[end]]
+      [[if $column.Restrictions.MaxLength]]
+           validation.MaxSize([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MaxLength]]).Key("[[$var]].[[goify $column.Name true]]")
+      [[end]]
+      [[if $column.Restrictions.Length]]
+           validation.Length([[$var]].[[goify $column.Name true]], [[$column.Restrictions.Length]]).Key("[[$var]].[[goify $column.Name true]]")
+      [[end]]
+      [[if $column.Restrictions.MaxValue]]
+        [[if $column.Restrictions.MinValue]]
+           validation.Range([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MinValue]], [[$column.Restrictions.MaxValue]]).Key("[[$var]].[[goify $column.Name true]]")
+        [[else]]
+           validation.Max([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MaxValue]]).Key("[[$var]].[[goify $column.Name true]]")
+        [[end]]
+      [[else if $column.Restrictions.MinValue]]
+        validation.Min([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MinValue]]).Key("[[$var]].[[goify $column.Name true]]")
+      [[end]]
+    [[end]]
+  [[end]]
+[[end]]
   return validation.HasErrors()
 }
 
@@ -850,7 +865,7 @@ var viewEditText = `{{set . "title" "编辑[[.controllerName]]"}}
     <div class="ibox-content">
         <form action="{{url "[[.controllerName]].Update" }}" method="POST" class="form-horizontal" id="[[underscore .controllerName]]-edit">
         <input type="hidden" name="_method" value="PUT">
-        {{hidden_field . "[[camelizeDownFirst .class.Name]].ID"}}
+        {{hidden_field . "[[camelizeDownFirst .class.Name]].ID" | render}}
         {{template "[[.controllerName]]/edit_fields.html" .}}
         <div class="form-group">
             <div class="col-lg-offset-2 col-lg-10">
@@ -863,20 +878,20 @@ var viewEditText = `{{set . "title" "编辑[[.controllerName]]"}}
 </div>
 {{template "[[if .layouts]][[.layouts]][[end]]footer.html" .}}`
 
-var viewFieldsText = `[[$class := .class]][[$instaneName := camelizeDownFirst .class.Name]][[define "lengthLimit"]][[end]][[range $column := .class.Fields]][[if isID $column]][[else if editDisabled $column]][[else if isBelongsTo $class  $column ]]{{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" .[[belongsToClassName $class  $column | pluralize | camelizeDownFirst]] | render}}
-[[else if hasEnumerations $column ]]{{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" "[[jsEnumeration $column.Restrictions.Enumerations | js]]" | render}}
+var viewFieldsText = `[[$class := .class]][[$instaneName := camelizeDownFirst .class.Name]][[define "lengthLimit"]][[end]][[range $column := .class.Fields]][[if isID $column]][[else if editDisabled $column]][[else if isBelongsTo $class  $column ]]{{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" .[[belongsToClassName $class  $column | pluralize | camelizeDownFirst]] [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
+[[else if hasEnumerations $column ]]{{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" "[[jsEnumeration $column.Restrictions.Enumerations | js]]" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
 [[else if $column.Format ]][[if eq $column.Format "ip" ]]{{ipaddress_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
-[[else if eq $column.Format "email" ]]{{email_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
+[[else if eq $column.Format "email" ]]{{email_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
 [[end]][[else if eq $column.Type "string" ]][[if isClob $column ]]{{textarea_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" 3  0 | [[template "lengthLimit" $column]] render}}
-[[else]]{{text_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
-[[end]][[else if eq $column.Type "integer" "number" "biginteger" "int" "int64" "uint" "uint64" "float" "float64" ]]{{number_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
-[[else if eq $column.Type "boolean" "bool" ]]{{checkbox_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
-[[else if eq $column.Type "password" ]]{{password_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
-[[else if eq $column.Type "time" ]]{{time_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
-[[else if eq $column.Type "datetime" ]]{{datetime_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
-[[else if eq $column.Type "date" ]]{{date_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
-[[else if eq $column.Type "map" ]]{{map_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
-[[else]]{{text_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
+[[else]]{{text_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
+[[end]][[else if eq $column.Type "integer" "number" "biginteger" "int" "int64" "uint" "uint64" "float" "float64" ]]{{number_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
+[[else if eq $column.Type "boolean" "bool" ]]{{checkbox_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
+[[else if eq $column.Type "password" ]]{{password_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
+[[else if eq $column.Type "time" ]]{{time_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
+[[else if eq $column.Type "datetime" ]]{{datetime_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
+[[else if eq $column.Type "date" ]]{{date_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
+[[else if eq $column.Type "map" ]]{{map_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
+[[else]]{{text_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if $column.IsReadOnly]]| f_disabled[[end]] | render}}
 [[end]][[end]]`
 
 var viewIndexText = `{{$raw := .}}{{set . "title" "[[.controllerName]]"}}
@@ -969,10 +984,10 @@ var viewQuickText = `<div class="quick-actions btn-group m-b">
     </a>{{end}}
     [[- if fieldExists .class "name" -]]
     <form action="{{url "[[.controllerName]].Index" 0 0}}" method="POST" id='[[underscore .controllerName]]-quick-form' class="btn btn-outline btn-default" style='display:inline;'>
-            <input type="text" name="query">
-                <a href="javascript:document.getElementById('[[underscore .controllerName]]-quick-form').submit()" class="grid-action" method="" mode="*">
-                    <i class="fa fa-search"></i> 查询
-                </a>
+        <input type="text" name="query">
+        <a href="javascript:document.getElementById('[[underscore .controllerName]]-quick-form').submit()" >
+            <i class="fa fa-search"></i> 查询
+        </a>
     </form>
     [[- end]]
 </div>

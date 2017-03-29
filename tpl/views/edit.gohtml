@@ -9,7 +9,7 @@
     <div class="ibox-content">
         <form action="{{url "[[.controllerName]].Update" }}" method="POST" class="form-horizontal" id="[[underscore .controllerName]]-edit">
         <input type="hidden" name="_method" value="PUT">
-        {{hidden_field . "[[camelizeDownFirst .class.Name]].ID"}}
+        {{hidden_field . "[[camelizeDownFirst .class.Name]].ID" | render}}
         {{template "[[.controllerName]]/edit_fields.html" .}}
         <div class="form-group">
             <div class="col-lg-offset-2 col-lg-10">
