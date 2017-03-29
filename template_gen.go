@@ -666,6 +666,29 @@ func (c [[.controllerName]]) Index(pageIndex int, pageSize int) revel.Result {
     c.FlashParams()
     return c.Render()
   }
+
+  [[if .class.BelongsTo ]]
+  var idList = make([]int64, 0, len([[camelizeDownFirst .modelName]]))
+  for idx := range [[camelizeDownFirst .modelName]] {
+    idList = append(idList, [[camelizeDownFirst .modelName]][idx].ID)
+  }
+  [[end]][[range $belongsTo := .class.BelongsTo ]]  
+  [[$targetName := pluralize $belongsTo.Target]][[$varName := camelizeDownFirst $targetName]]var [[$varName]] []models.[[$belongsTo.Target]]
+  err = c.Lifecycle.DB.[[$targetName]]().Where().
+    And(orm.Cond{"id IN": idList}).
+    All(&[[$varName]])
+  if err != nil {
+    c.Flash.Error("load [[$belongsTo.Target]] fail, " + err.Error())
+    c.FlashParams()
+  } else {
+    var [[$varName]]ByID = make(map[int64]string, len([[$varName]]))
+    for idx := range [[$varName]] {
+      [[$varName]]ByID[ [[$varName]][idx].ID ] = [[$varName]][idx].Name
+    }
+    c.ViewArgs["[[$varName]]"] = [[$varName]]ByID
+  }
+  [[end]]
+
   paginator := libs.NewPaginator(c.Request.Request, pageSize, total)
   return c.Render([[camelizeDownFirst .modelName]], paginator)
 }
@@ -885,7 +908,13 @@ var viewIndexText = `{{$raw := .}}{{set . "title" "[[.controllerName]]"}}
       <tr>
         <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker" key="{{$v.ID}}" url="{{url "[[.controllerName]].Edit" $v.ID}}"></td>
         [[range $column := .class.Fields]][[if needDisplay $column]]
-        <td>{{[[if eq $column.Type "date"]]date [[else if eq $column.Type "datetime"]]datetime [[else if eq $column.Type "time"]]time [[end]]$v.[[goify $column.Name true]]}}</td>[[end]][[end]]
+        [[- if isBelongsTo $.class  $column -]]
+        <td>{{index $raw.[[belongsToClassName $.class  $column | pluralize | camelizeDownFirst]] $v.[[goify $column.Name true]]}}</td>
+        [[else -]]
+        <td>{{[[if eq $column.Type "date"]]date [[else if eq $column.Type "datetime"]]datetime [[else if eq $column.Type "time"]]time [[end]]$v.[[goify $column.Name true]]}}</td>
+        [[end -]]
+        [[- end -]]
+        [[- end -]]
         {{if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}<td>
           {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]"}}<a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>{{end}}
           {{if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}<form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-horizontal" style='display:inline;'>

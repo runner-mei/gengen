@@ -44,6 +44,29 @@ func (c [[.controllerName]]) Index(pageIndex int, pageSize int) revel.Result {
     c.FlashParams()
     return c.Render()
   }
+
+  [[if .class.BelongsTo ]]
+  var idList = make([]int64, 0, len([[camelizeDownFirst .modelName]]))
+  for idx := range [[camelizeDownFirst .modelName]] {
+    idList = append(idList, [[camelizeDownFirst .modelName]][idx].ID)
+  }
+  [[end]][[range $belongsTo := .class.BelongsTo ]]  
+  [[$targetName := pluralize $belongsTo.Target]][[$varName := camelizeDownFirst $targetName]]var [[$varName]] []models.[[$belongsTo.Target]]
+  err = c.Lifecycle.DB.[[$targetName]]().Where().
+    And(orm.Cond{"id IN": idList}).
+    All(&[[$varName]])
+  if err != nil {
+    c.Flash.Error("load [[$belongsTo.Target]] fail, " + err.Error())
+    c.FlashParams()
+  } else {
+    var [[$varName]]ByID = make(map[int64]string, len([[$varName]]))
+    for idx := range [[$varName]] {
+      [[$varName]]ByID[ [[$varName]][idx].ID ] = [[$varName]][idx].Name
+    }
+    c.ViewArgs["[[$varName]]"] = [[$varName]]ByID
+  }
+  [[end]]
+
   paginator := libs.NewPaginator(c.Request.Request, pageSize, total)
   return c.Render([[camelizeDownFirst .modelName]], paginator)
 }
