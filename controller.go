@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"path/filepath"
 	"text/template"
 
@@ -28,7 +27,6 @@ func (cmd *GenerateControllerCommand) Run(args []string) error {
 	return cmd.run(args, func(cls *types.ClassSpec) error {
 		funcs := template.FuncMap{"displayForBelongsTo": func(f types.FieldSpec) string {
 			ann := f.Annotations["display"]
-			fmt.Println(f.Name, ann)
 			if s, ok := ann.(string); ok {
 				return Goify(s, true)
 			}
