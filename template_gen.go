@@ -578,11 +578,15 @@ var ns = `package [[.namespace]]
 var handler = ``
 
 var structText = `[[$var := camelizeDownFirst .class.Name]][[$class := .class]]
-type [[.class.Name]] struct {[[range $field := .class.Fields ]]
-  [[goify $field.Name  true]] [[gotype $field.Type]] ` + "`" + `json:"[[underscore $field.Name]][[if omitempty $field]],omitempty[[end]]" xorm:"[[underscore $field.Name]][[if eq $field.Name "id"]] pk autoincr[[else if eq $field.Name "created_at"]] created[[else if eq $field.Name "updated_at"]] updated[[end]][[if $field.IsUniquely]][[if ne $field.Name "id"]] unique[[end]][[end]][[if $field.IsRequired]][[if ne $field.Name "id"]] notnull[[end]][[end]][[if $field.DefaultValue]] default('[[$field.DefaultValue]]')[[end]]"` + "`" + `[[end]]
+type [[.class.Name]] struct {
+[[- range $field := .class.Fields ]]
+  [[goify $field.Name  true]] [[gotype $field.Type]] ` + "`" + `json:"[[underscore $field.Name]][[if omitempty $field]],omitempty[[end]]" xorm:"[[underscore $field.Name]][[if eq $field.Name "id"]] pk autoincr[[else if eq $field.Name "created_at"]] created[[else if eq $field.Name "updated_at"]] updated[[end]][[if $field.IsUniquely]][[if ne $field.Name "id"]] unique[[end]][[end]][[if $field.IsRequired]][[if ne $field.Name "id"]] notnull[[end]][[end]][[if $field.DefaultValue]] default('[[$field.DefaultValue]]')[[end]]"` + "`" + `
+[[- end]]
 
-  [[range $belongsTo := .class.BelongsTo ]][[if fieldExists $class $belongsTo.Name | not ]][[$belongsTo.AttributeName false]] int64 ` + "`" + `json:"[[$belongsTo.AttributeName true]]" xorm:"[[$belongsTo.AttributeName true]]"` + "`" + `
-  [[end]][[end]]
+  [[- range $belongsTo := .class.BelongsTo ]]
+  [[- if fieldExists $class $belongsTo.Name | not ]][[$belongsTo.AttributeName false]] int64 ` + "`" + `json:"[[$belongsTo.AttributeName true]]" xorm:"[[$belongsTo.AttributeName true]]"` + "`" + `
+  [[- end]]
+  [[- end]]
 }
 
 func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) TableName() string {
@@ -590,40 +594,40 @@ func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) TableName() string {
 }
 
 func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) Validate(validation *revel.Validation) bool {
-[[range $column := .class.Fields]]
-  [[if ne $column.Name "id"]]
-    [[if $column.IsRequired]]
+[[- range $column := .class.Fields]]
+  [[- if ne $column.Name "id"]]
+    [[- if $column.IsRequired]]
       validation.Required([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
-    [[else if eq $column.Format "email"]]
-      [[if not $column.IsRequired]]
+    [[- else if eq $column.Format "email"]]
+      [[- if not $column.IsRequired]]
         if "" != [[$var]].[[goify $column.Name true]] {
           validation.Email([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
         }
-      [[else]]
+      [[- else]]
         validation.Email([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
-      [[end]]
-    [[else if $column.Restrictions]]
-      [[if $column.Restrictions.MinLength]]
+      [[- end]]
+    [[- else if $column.Restrictions]]
+      [[- if $column.Restrictions.MinLength]]
            validation.MinSize([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MinLength]]).Key("[[$var]].[[goify $column.Name true]]")
-      [[end]]
-      [[if $column.Restrictions.MaxLength]]
+      [[- end]]
+      [[- if $column.Restrictions.MaxLength]]
            validation.MaxSize([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MaxLength]]).Key("[[$var]].[[goify $column.Name true]]")
-      [[end]]
-      [[if $column.Restrictions.Length]]
+      [[- end]]
+      [[- if $column.Restrictions.Length]]
            validation.Length([[$var]].[[goify $column.Name true]], [[$column.Restrictions.Length]]).Key("[[$var]].[[goify $column.Name true]]")
-      [[end]]
-      [[if $column.Restrictions.MaxValue]]
-        [[if $column.Restrictions.MinValue]]
+      [[- end]]
+      [[- if $column.Restrictions.MaxValue]]
+        [[- if $column.Restrictions.MinValue]]
            validation.Range([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MinValue]], [[$column.Restrictions.MaxValue]]).Key("[[$var]].[[goify $column.Name true]]")
-        [[else]]
+        [[- else]]
            validation.Max([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MaxValue]]).Key("[[$var]].[[goify $column.Name true]]")
-        [[end]]
-      [[else if $column.Restrictions.MinValue]]
+        [[- end]]
+      [[- else if $column.Restrictions.MinValue]]
         validation.Min([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MinValue]]).Key("[[$var]].[[goify $column.Name true]]")
-      [[end]]
-    [[end]]
-  [[end]]
-[[end]]
+      [[- end]]
+    [[- end]]
+  [[- end]]
+[[- end]]
   return validation.HasErrors()
 }
 
@@ -635,7 +639,8 @@ func KeyFor[[pluralize .class.Name]](key string) string {
   return key
 }`
 
-var controllerText = `import (
+var controllerText = `[[$modelName := .modelName -]][[$class := .class -]]
+import (
   "[[.projectPath]]/app"
   "[[.projectPath]]/app/libs"
   "[[.projectPath]]/app/models"
@@ -652,7 +657,7 @@ type [[.controllerName]] struct {
   [[if .baseController]][[.baseController]][[else]]*revel.Controller[[end]]
 }
 
-// 列出所有记录
+// Index 列出所有记录
 func (c [[.controllerName]]) Index(pageIndex int, pageSize int) revel.Result {
   var cond orm.Cond
   if name := c.Params.Get("query"); name != "" {
@@ -661,8 +666,7 @@ func (c [[.controllerName]]) Index(pageIndex int, pageSize int) revel.Result {
 
   total, err := c.Lifecycle.DB.[[.modelName]]().Where().And(cond).Count()
   if err != nil {
-    c.Flash.Error(err.Error())
-    c.FlashParams()
+    c.ViewArgs["errors"] = err.Error()
     return c.Render(err)
   }
 
@@ -677,63 +681,80 @@ func (c [[.controllerName]]) Index(pageIndex int, pageSize int) revel.Result {
     Limit(pageSize).
     All(&[[camelizeDownFirst .modelName]])
   if err != nil {
-    c.Flash.Error(err.Error())
-    c.FlashParams()
+    c.ViewArgs["errors"] = err.Error()
     return c.Render()
   }
 
-  [[if .class.BelongsTo ]]
-  var idList = make([]int64, 0, len([[camelizeDownFirst .modelName]]))
-  for idx := range [[camelizeDownFirst .modelName]] {
-    idList = append(idList, [[camelizeDownFirst .modelName]][idx].ID)
-  }
-  [[end]][[range $belongsTo := .class.BelongsTo ]]  
-  [[$targetName := pluralize $belongsTo.Target]][[$varName := camelizeDownFirst $targetName]]var [[$varName]] []models.[[$belongsTo.Target]]
-  err = c.Lifecycle.DB.[[$targetName]]().Where().
-    And(orm.Cond{"id IN": idList}).
-    All(&[[$varName]])
-  if err != nil {
-    c.Flash.Error("load [[$belongsTo.Target]] fail, " + err.Error())
-    c.FlashParams()
-  } else {
-    var [[$varName]]ByID = make(map[int64]string, len([[$varName]]))
-    for idx := range [[$varName]] {
-      [[$varName]]ByID[ [[$varName]][idx].ID ] = [[$varName]][idx].Name
+  [[if .class.BelongsTo -]]
+  if len([[camelizeDownFirst .modelName]]) > 0 {
+    var errList []string
+    [[range $belongsTo := .class.BelongsTo -]]
+    [[- $targetName := pluralize $belongsTo.Target -]]
+    [[- $varName := camelizeDownFirst $targetName]]
+    var [[camelizeDownFirst $belongsTo.Target]]IDList = make([]int64, 0, len([[camelizeDownFirst $modelName]]))
+    for idx := range [[camelizeDownFirst $modelName]] {
+      [[camelizeDownFirst $belongsTo.Target]]IDList = append([[camelizeDownFirst $belongsTo.Target]]IDList, [[camelizeDownFirst $modelName]][idx].[[$belongsTo.AttributeName false]])
     }
-    c.ViewArgs["[[$varName]]"] = [[$varName]]ByID
+
+    var [[$varName]] []models.[[$belongsTo.Target]]
+    err = c.Lifecycle.DB.[[$targetName]]().Where().
+      And(orm.Cond{"id IN": [[camelizeDownFirst $belongsTo.Target]]IDList}).
+      All(&[[$varName]])
+    if err != nil {
+      errList = append(errList, "load [[$belongsTo.Target]] fail, " + err.Error())
+    } else {
+      var [[$varName]]ByID = make(map[int64]string, len([[$varName]]))
+      for idx := range [[$varName]] {
+        [[$field := field $class $belongsTo.Name -]]
+        [[$varName]]ByID[ [[$varName]][idx].ID ] = [[$varName]][idx].[[displayForBelongsTo $field]]
+      }
+      c.ViewArgs["[[$varName]]"] = [[$varName]]ByID
+    }
+    [[- end]]
+    if len(errList) > 0 {
+      c.ViewArgs["errors"] = errList
+    }
   }
-  [[end]]
+  [[- end]]
 
   paginator := libs.NewPaginator(c.Request.Request, pageSize, total)
   return c.Render([[camelizeDownFirst .modelName]], paginator)
 }
 
-// 编辑新建记录
+[[if newDisabled .class | not -]]
+// New 编辑新建记录
 func (c [[.controllerName]]) New() revel.Result {
-  [[if .class.BelongsTo ]]var err error[[end]][[range $belongsTo := .class.BelongsTo ]]  
+  [[if .class.BelongsTo -]]
+  var errList []string
+  var err error
+  [[range $belongsTo := .class.BelongsTo ]]  
   [[$targetName := pluralize $belongsTo.Target]][[$varName := camelizeDownFirst $targetName]]var [[$varName]] []models.[[$belongsTo.Target]]
   err = c.Lifecycle.DB.[[$targetName]]().Where().
     All(&[[$varName]])
   if err != nil {
-    c.Flash.Error("load [[$belongsTo.Target]] fail, " + err.Error())
-    c.FlashParams()
+    errList = append(errList, "load [[$belongsTo.Target]] fail, " + err.Error())
     c.ViewArgs["[[$varName]]"] = []forms.InputChoice{}
   } else {
+    [[$field := field $class $belongsTo.Name -]]
     var opt[[$targetName]] = make([]forms.InputChoice, 0, len([[$varName]]))
     for _, o := range [[$varName]] {
       opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
         Value: strconv.FormatInt(int64(o.ID),10),
-        Label: o.Name,
+        Label: o.[[displayForBelongsTo $field]],
       })
     }
     c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
   }
-  [[end]]
+  [[- end]]
 
+  if len(errList) > 0 {
+    c.ViewArgs["errors"] = errList
+  }
+  [[- end]]
   return c.Render()
 }
 
-// 创建记录
+// Create 创建记录
 func (c [[.controllerName]]) Create([[camelizeDownFirst .class.Name]] *models.[[.class.Name]]) revel.Result {
   if [[camelizeDownFirst .class.Name]].Validate(c.Validation) {
     c.Validation.Keep()
@@ -757,8 +778,10 @@ func (c [[.controllerName]]) Create([[camelizeDownFirst .class.Name]] *models.[[
   c.Flash.Success(revel.Message(c.Request.Locale, "insert.success"))
   return c.Redirect(routes.[[.controllerName]].Index(0, 0))
 }
+[[- end]]
 
-// 编辑指定 id 的记录
+[[if editDisabled .class | not -]]
+// Edit 编辑指定 id 的记录
 func (c [[.controllerName]]) Edit(id int64) revel.Result {
   var [[camelizeDownFirst .class.Name]] models.[[.class.Name]]
   err := c.Lifecycle.DB.[[.modelName]]().Id(id).Get(&[[camelizeDownFirst .class.Name]])
@@ -772,31 +795,37 @@ func (c [[.controllerName]]) Edit(id int64) revel.Result {
     return c.Redirect(routes.[[.controllerName]].Index(0, 0))
   }
 
+  [[if .class.BelongsTo -]]
+  var errList []string
   [[range $belongsTo := .class.BelongsTo ]]  
   [[$targetName := pluralize $belongsTo.Target]][[$varName := camelizeDownFirst $targetName]]var [[$varName]] []models.[[$belongsTo.Target]]
   err = c.Lifecycle.DB.[[$targetName]]().Where().
     All(&[[$varName]])
   if err != nil {
-    c.Flash.Error("load [[$belongsTo.Target]] fail, " + err.Error())
-    c.FlashParams()
+    errList = append(errList, "load [[$belongsTo.Target]] fail, " + err.Error())
     c.ViewArgs["[[$varName]]"] = []forms.InputChoice{}
   } else {
+    [[$field := field $class $belongsTo.Name -]]
     var opt[[$targetName]] = make([]forms.InputChoice, 0, len([[$varName]]))
     for _, o := range [[$varName]] {
       opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
         Value: strconv.FormatInt(int64(o.ID),10),
-        Label: o.Name,
+        Label: o.[[displayForBelongsTo $field]],
       })
     }
     c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
   }
-  [[end]]
+
+  if len(errList) > 0 {
+    c.ViewArgs["errors"] = errList
+  }
+  [[- end]]
+  [[- end]]
 
   return c.Render([[camelizeDownFirst .class.Name]])
 }
 
-
-// 按 id 更新记录
+// Update 按 id 更新记录
 func (c [[.controllerName]]) Update([[camelizeDownFirst .class.Name]] *models.[[.class.Name]]) revel.Result {
   if [[camelizeDownFirst .class.Name]].Validate(c.Validation) {
     c.Validation.Keep()
@@ -823,8 +852,10 @@ func (c [[.controllerName]]) Update([[camelizeDownFirst .class.Name]] *models.[[
   c.Flash.Success(revel.Message(c.Request.Locale, "update.success"))
   return c.Redirect(routes.[[.controllerName]].Index(0, 0))
 }
+[[- end]]
 
-// 按 id 删除记录
+[[if deleteDisabled .class | not -]]
+// Delete 按 id 删除记录
 func (c [[.controllerName]]) Delete(id int64) revel.Result {
   err :=  c.Lifecycle.DB.[[.modelName]]().Id(id).Delete()
   if nil != err {
@@ -839,7 +870,7 @@ func (c [[.controllerName]]) Delete(id int64) revel.Result {
   return c.Redirect([[.controllerName]].Index)
 }
 
-// 按 id 列表删除记录
+// DeleteByIDs 按 id 列表删除记录
 func (c [[.controllerName]]) DeleteByIDs(id_list []int64) revel.Result {
   if len(id_list) == 0 {
     c.Flash.Error("请至少选择一条记录！")
@@ -852,7 +883,8 @@ func (c [[.controllerName]]) DeleteByIDs(id_list []int64) revel.Result {
     c.Flash.Success(revel.Message(c.Request.Locale, "delete.success"))
   }
   return c.Redirect([[.controllerName]].Index)
-}`
+}
+[[- end]]`
 
 var viewEditText = `{{set . "title" "编辑[[.controllerName]]"}}
 {{append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
@@ -896,7 +928,7 @@ var viewFieldsText = `[[$class := .class]][[$instaneName := camelizeDownFirst .c
 [[else]]{{text_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
 [[end]][[end]]`
 
-var viewIndexText = `{{$raw := .}}{{set . "title" "[[.controllerName]]"}}
+var viewIndexText = `[[$raw := .]]{{$raw := .}}{{set . "title" "[[.controllerName]]"}}
 {{if eq .RunMode "dev"}}
 {{append . "moreScripts" "/public/js/plugins/bootbox/bootbox.js"}}
 {{else}}
@@ -917,32 +949,49 @@ var viewIndexText = `{{$raw := .}}{{set . "title" "[[.controllerName]]"}}
       <tr>
         <th><input type="checkbox" id="[[underscore .controllerName]]-all-checker"></th>[[range $field := .class.Fields]][[if needDisplay $field]]
         <th><nobr>[[localizeName $field]]</nobr></th>[[end]][[end]]
-        {{if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}<th>操作</th>{{end}}
+        [[if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not -]]
+        {{if current_user_has_write_permission $raw "[[underscore .controllerName]]" -}}
+        <th>操作</th>
+        {{- end}}
+        [[- end]]
       </tr>
       </thead>
-      {{range $v := .[[camelizeDownFirst .modelName]]}}
-      <tr>
-        <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker" key="{{$v.ID}}" url="{{url "[[.controllerName]].Edit" $v.ID}}"></td>
-        [[range $column := .class.Fields]][[if needDisplay $column]]
-        [[- if isBelongsTo $.class  $column -]]
-        <td>{{index $raw.[[belongsToClassName $.class  $column | pluralize | camelizeDownFirst]] $v.[[goify $column.Name true]]}}</td>
-        [[else -]]
-        <td>{{[[if eq $column.Type "date"]]date [[else if eq $column.Type "datetime"]]datetime [[else if eq $column.Type "time"]]time [[end]]$v.[[goify $column.Name true]]}}</td>
-        [[end -]]
-        [[- end -]]
-        [[- end -]]
-        {{if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}<td>
-          {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]"}}<a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>{{end}}
-          {{if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}<form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-inline" role="form" style="display: inline;">
-            <input type="hidden" name="_method" value="DELETE">
-            <input type="hidden" name="id" value="{{$v.ID}}">
-              <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">
-                <i class="icon-search"></i> 删除
-              </a>
-            </form>{{end}}
-        </td>{{end}}
-      </tr>
-      {{end}}
+      <tbody>
+      {{- range $v := .[[camelizeDownFirst .modelName]]}}
+        <tr>
+          <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker" key="{{$v.ID}}" url="{{url "[[.controllerName]].Edit" $v.ID}}"></td>
+          [[range $column := .class.Fields]][[if needDisplay $column]]
+          [[- if isBelongsTo $.class  $column -]]
+          <td>{{index $raw.[[belongsToClassName $.class  $column | pluralize | camelizeDownFirst]] $v.[[goify $column.Name true]]}}</td>
+          [[else -]]
+          <td>{{[[if eq $column.Type "date"]]date [[else if eq $column.Type "datetime"]]datetime [[else if eq $column.Type "time"]]time [[end]]$v.[[goify $column.Name true]]}}</td>
+          [[end -]]
+          [[- end -]]
+          [[- end -]]
+
+          [[if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not -]]
+          {{if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}<td>
+          [[if editDisabled $raw.class | not -]]
+            {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]" -}}
+            <a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>
+            {{- end}}
+          [[- end]]
+          [[if deleteDisabled $raw.class | not -]]
+          {{if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}
+            <form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-inline" role="form" style="display: inline;">
+              <input type="hidden" name="_method" value="DELETE">
+              <input type="hidden" name="id" value="{{$v.ID}}">
+                <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">
+                  <i class="icon-search"></i> 删除
+                </a>
+            </form>
+            {{- end}}
+          [[- end]]
+          </td>{{end}}
+          [[- end]]
+        </tr>
+      <tbody>
+      {{- end}}
     </table>
     {{template "[[if .layouts]][[.layouts]][[end]]paginator.html" .}}
     </div>
@@ -976,21 +1025,27 @@ var viewNewText = `{{set . "title" "新建[[.controllerName]]"}}
 {{template "[[if .layouts]][[.layouts]][[end]]footer.html" .}}`
 
 var viewQuickText = `    <div class="quick-actions btn-group m-b">
+        [[if newDisabled .class | not -]]
         {{- if current_user_has_new_permission . "[[underscore .controllerName]]"}}
         <a id='[[underscore .controllerName]]-new' href='{{url "[[.controllerName]].New"}}'  class="btn btn-outline btn-default" method="" mode="*" confirm="" client="false" target="_self">
             <i class="fa fa-add"></i>添加
         </a>
         {{- end}}
+        [[- end]]
+        [[if editDisabled .class | not -]]
         {{- if current_user_has_edit_permission . "[[underscore .controllerName]]"}}
         <a id='[[underscore .controllerName]]-edit' href='' url='{{url "[[.controllerName]].Edit"}}'  class="btn btn-outline btn-default" method="" mode="1" confirm="" client="false" target="_self">
             <i class="fa fa-edit"></i>编辑
         </a>
         {{- end}}
+        [[- end]]
+        [[if deleteDisabled .class | not -]]
         {{- if current_user_has_del_permission . "[[underscore .controllerName]]"}}
         <a id='[[underscore .controllerName]]-delete' href='' url='{{url "[[.controllerName]].DeleteByIDs"}}'  class="btn btn-outline btn-default" mode="+" target="_self">
             <i class="fa fa-trash"></i> 删除
         </a>
         {{- end}}
+        [[- end]]
         [[- if fieldExists .class "name" -]]
         <form action="{{url "[[.controllerName]].Index" 0 0}}" method="POST" id='[[underscore .controllerName]]-quick-form' class="form-inline"  style="display: inline;">
             <input type="text" name="query">

@@ -82,6 +82,47 @@ func (cmd *baseCommand) newTemplate(name string, funcs template.FuncMap) (*templ
 		"camelizeDownFirst": types.CamelizeDownFirst,
 		"omitempty": func(t *types.FieldSpec) bool {
 			return !t.IsRequired
+		},
+		"editDisabled": func(f interface{}) bool {
+			return HasFeature(f, "editDisabled")
+		},
+		"newDisabled": func(f interface{}) bool {
+			return HasFeature(f, "newDisabled")
+		},
+		"deleteDisabled": func(f interface{}) bool {
+			return HasFeature(f, "deleteDisabled")
+		},
+		"hasAnyFeatures": func(f interface{}, names ...string) bool {
+			for _, nm := range names {
+				if HasFeature(f, nm) {
+					return true
+				}
+			}
+			return false
+		},
+		"hasAllFeatures": func(f interface{}, names ...string) bool {
+			for _, nm := range names {
+				if !HasFeature(f, nm) {
+					return false
+				}
+			}
+			return true
+		},
+		"fieldExists": func(cls *types.ClassSpec, fieldName string) bool {
+			for _, field := range cls.Fields {
+				if field.Name == fieldName {
+					return true
+				}
+			}
+			return false
+		},
+		"field": func(cls *types.ClassSpec, fieldName string) types.FieldSpec {
+			for _, field := range cls.Fields {
+				if field.Name == fieldName {
+					return field
+				}
+			}
+			panic(errors.New("field '" + fieldName + "' isn't exists in the " + cls.Name))
 		}}
 
 	bs, e := cmd.loadFile(name)
@@ -225,13 +266,13 @@ func (cmd *baseCommand) executeTempate(override bool, names []string, funcs temp
 	for _, name := range names {
 		tpl, err := cmd.newTemplate(name, funcs)
 		if nil != err {
-			return err
+			return errors.New("load '" + name + "' template," + err.Error())
 		}
 
 		if err := tpl.Execute(out, params); err != nil {
 			out.Close()
 			os.Remove(fname)
-			return err
+			return errors.New("execute '" + name + "' template," + err.Error())
 		}
 	}
 	return nil

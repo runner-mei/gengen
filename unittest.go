@@ -217,12 +217,11 @@ func (r *RandomGenerator) Int(min, max string) int64 {
 			return r.rand.Int63()
 		}
 
-		for {
-			value := r.rand.Int63()
-			if value <= maxValue {
-				return value
-			}
+		value := r.rand.Int63()
+		if value <= maxValue {
+			return value
 		}
+		return value % maxValue
 	}
 
 	minValue, err := strconv.ParseInt(min, 10, 0)
@@ -230,22 +229,25 @@ func (r *RandomGenerator) Int(min, max string) int64 {
 		return r.rand.Int63()
 	}
 	if max == "" {
-		for {
-			value := r.rand.Int63()
-			if value >= minValue {
-				return value
-			}
+		value := r.rand.Int63()
+		if value >= minValue {
+			return value
 		}
+		return value + minValue
 	}
 
 	maxValue, err := strconv.ParseInt(max, 10, 0)
 	if err != nil {
 		return r.rand.Int63()
 	}
-	for {
-		value := r.rand.Int63()
-		if value >= minValue && value <= maxValue {
-			return value
-		}
+
+	if minValue >= maxValue {
+		return r.rand.Int63()
 	}
+
+	value := r.rand.Int63()
+	if value >= minValue && value <= maxValue {
+		return value
+	}
+	return value % maxValue
 }

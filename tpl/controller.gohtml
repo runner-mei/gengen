@@ -1,3 +1,4 @@
+[[$modelName := .modelName -]][[$class := .class -]]
 import (
   "[[.projectPath]]/app"
   "[[.projectPath]]/app/libs"
@@ -15,7 +16,7 @@ type [[.controllerName]] struct {
   [[if .baseController]][[.baseController]][[else]]*revel.Controller[[end]]
 }
 
-// 列出所有记录
+// Index 列出所有记录
 func (c [[.controllerName]]) Index(pageIndex int, pageSize int) revel.Result {
   var cond orm.Cond
   if name := c.Params.Get("query"); name != "" {
@@ -24,8 +25,7 @@ func (c [[.controllerName]]) Index(pageIndex int, pageSize int) revel.Result {
 
   total, err := c.Lifecycle.DB.[[.modelName]]().Where().And(cond).Count()
   if err != nil {
-    c.Flash.Error(err.Error())
-    c.FlashParams()
+    c.ViewArgs["errors"] = err.Error()
     return c.Render(err)
   }
 
@@ -40,63 +40,80 @@ func (c [[.controllerName]]) Index(pageIndex int, pageSize int) revel.Result {
     Limit(pageSize).
     All(&[[camelizeDownFirst .modelName]])
   if err != nil {
-    c.Flash.Error(err.Error())
-    c.FlashParams()
+    c.ViewArgs["errors"] = err.Error()
     return c.Render()
   }
 
-  [[if .class.BelongsTo ]]
-  var idList = make([]int64, 0, len([[camelizeDownFirst .modelName]]))
-  for idx := range [[camelizeDownFirst .modelName]] {
-    idList = append(idList, [[camelizeDownFirst .modelName]][idx].ID)
-  }
-  [[end]][[range $belongsTo := .class.BelongsTo ]]  
-  [[$targetName := pluralize $belongsTo.Target]][[$varName := camelizeDownFirst $targetName]]var [[$varName]] []models.[[$belongsTo.Target]]
-  err = c.Lifecycle.DB.[[$targetName]]().Where().
-    And(orm.Cond{"id IN": idList}).
-    All(&[[$varName]])
-  if err != nil {
-    c.Flash.Error("load [[$belongsTo.Target]] fail, " + err.Error())
-    c.FlashParams()
-  } else {
-    var [[$varName]]ByID = make(map[int64]string, len([[$varName]]))
-    for idx := range [[$varName]] {
-      [[$varName]]ByID[ [[$varName]][idx].ID ] = [[$varName]][idx].Name
+  [[if .class.BelongsTo -]]
+  if len([[camelizeDownFirst .modelName]]) > 0 {
+    var errList []string
+    [[range $belongsTo := .class.BelongsTo -]]
+    [[- $targetName := pluralize $belongsTo.Target -]]
+    [[- $varName := camelizeDownFirst $targetName]]
+    var [[camelizeDownFirst $belongsTo.Target]]IDList = make([]int64, 0, len([[camelizeDownFirst $modelName]]))
+    for idx := range [[camelizeDownFirst $modelName]] {
+      [[camelizeDownFirst $belongsTo.Target]]IDList = append([[camelizeDownFirst $belongsTo.Target]]IDList, [[camelizeDownFirst $modelName]][idx].[[$belongsTo.AttributeName false]])
     }
-    c.ViewArgs["[[$varName]]"] = [[$varName]]ByID
+
+    var [[$varName]] []models.[[$belongsTo.Target]]
+    err = c.Lifecycle.DB.[[$targetName]]().Where().
+      And(orm.Cond{"id IN": [[camelizeDownFirst $belongsTo.Target]]IDList}).
+      All(&[[$varName]])
+    if err != nil {
+      errList = append(errList, "load [[$belongsTo.Target]] fail, " + err.Error())
+    } else {
+      var [[$varName]]ByID = make(map[int64]string, len([[$varName]]))
+      for idx := range [[$varName]] {
+        [[$field := field $class $belongsTo.Name -]]
+        [[$varName]]ByID[ [[$varName]][idx].ID ] = [[$varName]][idx].[[displayForBelongsTo $field]]
+      }
+      c.ViewArgs["[[$varName]]"] = [[$varName]]ByID
+    }
+    [[- end]]
+    if len(errList) > 0 {
+      c.ViewArgs["errors"] = errList
+    }
   }
-  [[end]]
+  [[- end]]
 
   paginator := libs.NewPaginator(c.Request.Request, pageSize, total)
   return c.Render([[camelizeDownFirst .modelName]], paginator)
 }
 
-// 编辑新建记录
+[[if newDisabled .class | not -]]
+// New 编辑新建记录
 func (c [[.controllerName]]) New() revel.Result {
-  [[if .class.BelongsTo ]]var err error[[end]][[range $belongsTo := .class.BelongsTo ]]  
+  [[if .class.BelongsTo -]]
+  var errList []string
+  var err error
+  [[range $belongsTo := .class.BelongsTo ]]  
   [[$targetName := pluralize $belongsTo.Target]][[$varName := camelizeDownFirst $targetName]]var [[$varName]] []models.[[$belongsTo.Target]]
   err = c.Lifecycle.DB.[[$targetName]]().Where().
     All(&[[$varName]])
   if err != nil {
-    c.Flash.Error("load [[$belongsTo.Target]] fail, " + err.Error())
-    c.FlashParams()
+    errList = append(errList, "load [[$belongsTo.Target]] fail, " + err.Error())
     c.ViewArgs["[[$varName]]"] = []forms.InputChoice{}
   } else {
+    [[$field := field $class $belongsTo.Name -]]
     var opt[[$targetName]] = make([]forms.InputChoice, 0, len([[$varName]]))
     for _, o := range [[$varName]] {
       opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
         Value: strconv.FormatInt(int64(o.ID),10),
-        Label: o.Name,
+        Label: o.[[displayForBelongsTo $field]],
       })
     }
     c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
   }
-  [[end]]
+  [[- end]]
 
+  if len(errList) > 0 {
+    c.ViewArgs["errors"] = errList
+  }
+  [[- end]]
   return c.Render()
 }
 
-// 创建记录
+// Create 创建记录
 func (c [[.controllerName]]) Create([[camelizeDownFirst .class.Name]] *models.[[.class.Name]]) revel.Result {
   if [[camelizeDownFirst .class.Name]].Validate(c.Validation) {
     c.Validation.Keep()
@@ -120,8 +137,10 @@ func (c [[.controllerName]]) Create([[camelizeDownFirst .class.Name]] *models.[[
   c.Flash.Success(revel.Message(c.Request.Locale, "insert.success"))
   return c.Redirect(routes.[[.controllerName]].Index(0, 0))
 }
+[[- end]]
 
-// 编辑指定 id 的记录
+[[if editDisabled .class | not -]]
+// Edit 编辑指定 id 的记录
 func (c [[.controllerName]]) Edit(id int64) revel.Result {
   var [[camelizeDownFirst .class.Name]] models.[[.class.Name]]
   err := c.Lifecycle.DB.[[.modelName]]().Id(id).Get(&[[camelizeDownFirst .class.Name]])
@@ -135,31 +154,37 @@ func (c [[.controllerName]]) Edit(id int64) revel.Result {
     return c.Redirect(routes.[[.controllerName]].Index(0, 0))
   }
 
+  [[if .class.BelongsTo -]]
+  var errList []string
   [[range $belongsTo := .class.BelongsTo ]]  
   [[$targetName := pluralize $belongsTo.Target]][[$varName := camelizeDownFirst $targetName]]var [[$varName]] []models.[[$belongsTo.Target]]
   err = c.Lifecycle.DB.[[$targetName]]().Where().
     All(&[[$varName]])
   if err != nil {
-    c.Flash.Error("load [[$belongsTo.Target]] fail, " + err.Error())
-    c.FlashParams()
+    errList = append(errList, "load [[$belongsTo.Target]] fail, " + err.Error())
     c.ViewArgs["[[$varName]]"] = []forms.InputChoice{}
   } else {
+    [[$field := field $class $belongsTo.Name -]]
     var opt[[$targetName]] = make([]forms.InputChoice, 0, len([[$varName]]))
     for _, o := range [[$varName]] {
       opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
         Value: strconv.FormatInt(int64(o.ID),10),
-        Label: o.Name,
+        Label: o.[[displayForBelongsTo $field]],
       })
     }
     c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
   }
-  [[end]]
+
+  if len(errList) > 0 {
+    c.ViewArgs["errors"] = errList
+  }
+  [[- end]]
+  [[- end]]
 
   return c.Render([[camelizeDownFirst .class.Name]])
 }
 
-
-// 按 id 更新记录
+// Update 按 id 更新记录
 func (c [[.controllerName]]) Update([[camelizeDownFirst .class.Name]] *models.[[.class.Name]]) revel.Result {
   if [[camelizeDownFirst .class.Name]].Validate(c.Validation) {
     c.Validation.Keep()
@@ -186,8 +211,10 @@ func (c [[.controllerName]]) Update([[camelizeDownFirst .class.Name]] *models.[[
   c.Flash.Success(revel.Message(c.Request.Locale, "update.success"))
   return c.Redirect(routes.[[.controllerName]].Index(0, 0))
 }
+[[- end]]
 
-// 按 id 删除记录
+[[if deleteDisabled .class | not -]]
+// Delete 按 id 删除记录
 func (c [[.controllerName]]) Delete(id int64) revel.Result {
   err :=  c.Lifecycle.DB.[[.modelName]]().Id(id).Delete()
   if nil != err {
@@ -202,7 +229,7 @@ func (c [[.controllerName]]) Delete(id int64) revel.Result {
   return c.Redirect([[.controllerName]].Index)
 }
 
-// 按 id 列表删除记录
+// DeleteByIDs 按 id 列表删除记录
 func (c [[.controllerName]]) DeleteByIDs(id_list []int64) revel.Result {
   if len(id_list) == 0 {
     c.Flash.Error("请至少选择一条记录！")
@@ -216,3 +243,4 @@ func (c [[.controllerName]]) DeleteByIDs(id_list []int64) revel.Result {
   }
   return c.Redirect([[.controllerName]].Index)
 }
+[[- end]]

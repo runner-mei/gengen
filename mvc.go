@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+	"net/http"
+	_ "net/http/pprof"
 	"path/filepath"
 )
 
@@ -25,6 +27,8 @@ func (cmd *GenerateMVCCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 
 // Run - 生成数据库模型代码
 func (cmd *GenerateMVCCommand) Run(args []string) error {
+	go http.ListenAndServe(":", nil)
+
 	var st GenerateStructCommand
 	var views GenerateViewCommand
 	var js GenerateJSCommand

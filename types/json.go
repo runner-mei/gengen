@@ -23,6 +23,8 @@ type ClassSpec struct {
 	HasMany             []HasMany             `json:"hasMany,omitempty" yaml:"hasMany,omitempty"`
 	BelongsTo           []BelongsTo           `json:"belongsTo,omitempty" yaml:"belongsTo,omitempty"`
 	HasAndBelongsToMany []HasAndBelongsToMany `json:"hasAndBelongsToMany,omitempty" yaml:"hasAndBelongsToMany,omitempty"`
+
+	Annotations map[string]interface{} `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 }
 
 type HasMany struct {
@@ -42,7 +44,7 @@ func (belongsTo *BelongsTo) AttributeName(json bool) string {
 		if json {
 			return Underscore(belongsTo.Name)
 		}
-		name := CamelCase(belongsTo.Name)
+		name := Goify(belongsTo.Name, true)
 		if strings.HasSuffix(name, "Id") {
 			return strings.TrimSuffix(name, "Id") + "ID"
 		}
@@ -51,7 +53,7 @@ func (belongsTo *BelongsTo) AttributeName(json bool) string {
 	if json {
 		return Underscore(belongsTo.Target) + "_id"
 	}
-	return CamelCase(belongsTo.Name) + "ID"
+	return Goify(Underscore(belongsTo.Target)+"_id", true)
 }
 
 type HasAndBelongsToMany struct {

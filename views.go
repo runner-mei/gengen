@@ -76,16 +76,6 @@ func (cmd *GenerateViewCommand) genrateView(cls *types.ClassSpec) error {
 			}
 			return false
 		},
-		"editDisabled": func(f types.FieldSpec) bool {
-			for k, ann := range f.Annotations {
-				if k == "editDisabled" {
-					if v := strings.ToLower(fmt.Sprint(ann)); v == "true" || v == "yes" {
-						return true
-					}
-				}
-			}
-			return false
-		},
 		"needDisplay": func(f types.FieldSpec) bool {
 			for k, ann := range f.Annotations {
 				if k == "noshow" {
@@ -116,14 +106,6 @@ func (cmd *GenerateViewCommand) genrateView(cls *types.ClassSpec) error {
 			}
 			return len(f.Restrictions.Enumerations) > 0
 		},
-		"fieldExists": func(cls *types.ClassSpec, fieldName string) bool {
-			for _, field := range cls.Fields {
-				if field.Name == fieldName {
-					return true
-				}
-			}
-			return false
-		},
 		"belongsToClassName": func(cls *types.ClassSpec, f types.FieldSpec) string {
 			for _, belongsTo := range cls.BelongsTo {
 				if belongsTo.Name == f.Name {
@@ -146,25 +128,29 @@ func (cmd *GenerateViewCommand) genrateView(cls *types.ClassSpec) error {
 		return errors.New("gen views/index: " + err.Error())
 	}
 
-	err = cmd.executeTempate(cmd.override, []string{"views/edit"}, funcs, params, filepath.Join(cmd.output, ctlName, "edit.html"))
-	if err != nil {
-		os.Remove(filepath.Join(cmd.output, "index.html"))
-		return errors.New("gen views/edit: " + err.Error())
-	}
-
-	err = cmd.executeTempate(cmd.override, []string{"views/fields"}, funcs, params, filepath.Join(cmd.output, ctlName, "edit_fields.html"))
-	if err != nil {
-		os.Remove(filepath.Join(cmd.output, "index.html"))
-		os.Remove(filepath.Join(cmd.output, "edit.html"))
-		return errors.New("gen views/fields: " + err.Error())
-	}
-
-	err = cmd.executeTempate(cmd.override, []string{"views/new"}, funcs, params, filepath.Join(cmd.output, ctlName, "new.html"))
-	if err != nil {
-		os.Remove(filepath.Join(cmd.output, "index.html"))
-		os.Remove(filepath.Join(cmd.output, "edit.html"))
-		os.Remove(filepath.Join(cmd.output, "edit_fields.html"))
-		return errors.New("gen views/new: " + err.Error())
+	if !HasFeature(cls, "editDisabled") || !HasFeature(cls, "newDisabled") {
+		err = cmd.executeTempate(cmd.override, []string{"views/fields"}, funcs, params, filepath.Join(cmd.output, ctlName, "edit_fields.html"))
+		if err != nil {
+			os.Remove(filepath.Join(cmd.output, "index.html"))
+			os.Remove(filepath.Join(cmd.output, "edit.html"))
+			return errors.New("gen views/fields: " + err.Error())
+		}
+		if !HasFeature(cls, "editDisabled") {
+			err = cmd.executeTempate(cmd.override, []string{"views/edit"}, funcs, params, filepath.Join(cmd.output, ctlName, "edit.html"))
+			if err != nil {
+				os.Remove(filepath.Join(cmd.output, "index.html"))
+				return errors.New("gen views/edit: " + err.Error())
+			}
+		}
+		if !HasFeature(cls, "newDisabled") {
+			err = cmd.executeTempate(cmd.override, []string{"views/new"}, funcs, params, filepath.Join(cmd.output, ctlName, "new.html"))
+			if err != nil {
+				os.Remove(filepath.Join(cmd.output, "index.html"))
+				os.Remove(filepath.Join(cmd.output, "edit.html"))
+				os.Remove(filepath.Join(cmd.output, "edit_fields.html"))
+				return errors.New("gen views/new: " + err.Error())
+			}
+		}
 	}
 
 	err = cmd.executeTempate(cmd.override, []string{"views/quick"}, funcs, params, filepath.Join(cmd.output, ctlName, "quick-bar.html"))
@@ -198,4 +184,29 @@ func localizeName(t interface{}) string {
 	default:
 		panic(fmt.Errorf("arguments of localizeName is unknown(%T: %v)", t, t))
 	}
+}
+
+func HasFeature(f interface{}, name string) bool {
+	var annotations map[string]interface{}
+	switch v := f.(type) {
+	case types.FieldSpec:
+		annotations = v.Annotations
+	case *types.FieldSpec:
+		annotations = v.Annotations
+	case *types.ClassSpec:
+		annotations = v.Annotations
+	case types.ClassSpec:
+		annotations = v.Annotations
+	default:
+		panic(fmt.Errorf("unknown type - %T - %v", f, f))
+	}
+
+	for k, ann := range annotations {
+		if k == name {
+			if v := strings.ToLower(fmt.Sprint(ann)); v == "true" || v == "yes" {
+				return true
+			}
+		}
+	}
+	return false
 }
