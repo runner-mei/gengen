@@ -658,7 +658,7 @@ type [[.controllerName]] struct {
 }
 
 // Index 列出所有记录
-func (c [[.controllerName]]) Index(pageIndex int, pageSize int) revel.Result {
+func (c [[.controllerName]]) Index() revel.Result {
   var cond orm.Cond
   if name := c.Params.Get("query"); name != "" {
     cond = orm.Cond{"name LIKE": "%" + name + "%"}
@@ -670,6 +670,9 @@ func (c [[.controllerName]]) Index(pageIndex int, pageSize int) revel.Result {
     return c.Render(err)
   }
 
+  var pageIndex, pageSize int
+  c.Params.Bind(&pageIndex, "pageIndex")
+  c.Params.Bind(&pageSize, "pageSize")
   if pageSize <= 0 {
     pageSize = libs.DEFAULT_SIZE_PER_PAGE
   }
@@ -776,7 +779,7 @@ func (c [[.controllerName]]) Create([[camelizeDownFirst .class.Name]] *models.[[
   }
 
   c.Flash.Success(revel.Message(c.Request.Locale, "insert.success"))
-  return c.Redirect(routes.[[.controllerName]].Index(0, 0))
+  return c.Redirect(routes.[[.controllerName]].Index())
 }
 [[- end]]
 
@@ -792,7 +795,7 @@ func (c [[.controllerName]]) Edit(id int64) revel.Result {
       c.Flash.Error(err.Error())
     }
     c.FlashParams()
-    return c.Redirect(routes.[[.controllerName]].Index(0, 0))
+    return c.Redirect(routes.[[.controllerName]].Index())
   }
 
   [[if .class.BelongsTo -]]
@@ -850,7 +853,7 @@ func (c [[.controllerName]]) Update([[camelizeDownFirst .class.Name]] *models.[[
     return c.Redirect(routes.[[.controllerName]].Edit(int64([[camelizeDownFirst .class.Name]].ID)))
   }
   c.Flash.Success(revel.Message(c.Request.Locale, "update.success"))
-  return c.Redirect(routes.[[.controllerName]].Index(0, 0))
+  return c.Redirect(routes.[[.controllerName]].Index())
 }
 [[- end]]
 
@@ -867,14 +870,14 @@ func (c [[.controllerName]]) Delete(id int64) revel.Result {
   } else {
     c.Flash.Success(revel.Message(c.Request.Locale, "delete.success"))
   }
-  return c.Redirect([[.controllerName]].Index)
+  return c.Redirect(routes.[[.controllerName]].Index())
 }
 
 // DeleteByIDs 按 id 列表删除记录
 func (c [[.controllerName]]) DeleteByIDs(id_list []int64) revel.Result {
   if len(id_list) == 0 {
     c.Flash.Error("请至少选择一条记录！")
-    return c.Redirect([[.controllerName]].Index)
+    return c.Redirect(routes.[[.controllerName]].Index())
   }
   _, err :=  c.Lifecycle.DB.[[.modelName]]().Where().And(orm.Cond{"id IN": id_list}).Delete()
   if nil != err {
@@ -882,7 +885,7 @@ func (c [[.controllerName]]) DeleteByIDs(id_list []int64) revel.Result {
   } else {
     c.Flash.Success(revel.Message(c.Request.Locale, "delete.success"))
   }
-  return c.Redirect([[.controllerName]].Index)
+  return c.Redirect(routes.[[.controllerName]].Index())
 }
 [[- end]]`
 
