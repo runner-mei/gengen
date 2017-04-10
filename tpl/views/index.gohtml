@@ -17,10 +17,14 @@
     <table class="table table-bordered table-striped table-highlight ">
       <thead>
       <tr>
-        <th><input type="checkbox" id="[[underscore .controllerName]]-all-checker"></th>[[range $field := .class.Fields]][[if needDisplay $field]]
-        <th><nobr>[[localizeName $field]]</nobr></th>[[end]][[end]]
-        [[if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not -]]
-        {{if current_user_has_write_permission $raw "[[underscore .controllerName]]" -}}
+        <th><input type="checkbox" id="[[underscore .controllerName]]-all-checker"></th>
+        [[- range $field := .class.Fields]]
+          [[- if needDisplay $field]]
+        <th>{{table_column_title . "[[$field.Name]]" "[[localizeName $field]]"}}</th>
+          [[- end]]
+        [[- end]]
+        [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not]]
+        {{- if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}
         <th>操作</th>
         {{- end}}
         [[- end]]
