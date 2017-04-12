@@ -30,6 +30,12 @@ func (cmd *GenerateControllerCommand) Run(args []string) error {
 			if s, ok := ann.(string); ok {
 				return Goify(s, true)
 			}
+
+			fields := ReferenceFields(f)
+			if len(fields) == 1 {
+				return Goify(fields[0].Name, true)
+			}
+
 			return "Name"
 		}}
 

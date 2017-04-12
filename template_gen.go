@@ -580,12 +580,25 @@ var handler = ``
 var structText = `[[$var := camelizeDownFirst .class.Name]][[$class := .class]]
 type [[.class.Name]] struct {
 [[- range $field := .class.Fields ]]
-  [[goify $field.Name  true]] [[gotype $field.Type]] ` + "`" + `json:"[[underscore $field.Name]][[if omitempty $field]],omitempty[[end]]" xorm:"[[underscore $field.Name]][[if eq $field.Name "id"]] pk autoincr[[else if eq $field.Name "created_at"]] created[[else if eq $field.Name "updated_at"]] updated[[end]][[if $field.IsUniquely]][[if ne $field.Name "id"]] unique[[end]][[end]][[if $field.IsRequired]][[if ne $field.Name "id"]] notnull[[end]][[end]][[if $field.DefaultValue]] default('[[$field.DefaultValue]]')[[end]]"` + "`" + `
+  [[goify $field.Name  true]] [[gotype $field.Type]] ` + "`" + `json:"[[underscore $field.Name]]
+  [[- if omitempty $field]],omitempty[[end -]]
+  " xorm:"[[underscore $field.Name]]
+  [[- if eq $field.Name "id"]] pk autoincr
+  [[- else if eq $field.Name "created_at"]] created
+  [[- else if eq $field.Name "updated_at"]] updated
+  [[- end -]]
+  [[- if $field.IsUniquely -]]
+    [[- if ne $field.Name "id"]] unique[[end -]]
+  [[- end]]
+  [[- if $field.IsRequired -]]
+    [[- if ne $field.Name "id"]] notnull[[end -]]
+  [[- end -]]
+  [[- if $field.DefaultValue]] default('[[$field.DefaultValue]]')[[end]]"` + "`" + `
 [[- end]]
 
   [[- range $belongsTo := .class.BelongsTo ]]
-  [[- if fieldExists $class $belongsTo.Name | not ]][[$belongsTo.AttributeName false]] int64 ` + "`" + `json:"[[$belongsTo.AttributeName true]]" xorm:"[[$belongsTo.AttributeName true]]"` + "`" + `
-  [[- end]]
+    [[- if fieldExists $class $belongsTo.Name | not ]][[$belongsTo.AttributeName false]] int64 ` + "`" + `json:"[[$belongsTo.AttributeName true]]" xorm:"[[$belongsTo.AttributeName true]]"` + "`" + `
+    [[- end]]
   [[- end]]
 }
 
@@ -706,10 +719,9 @@ func (c [[.controllerName]]) Index() revel.Result {
     if err != nil {
       errList = append(errList, "load [[$belongsTo.Target]] fail, " + err.Error())
     } else {
-      var [[$varName]]ByID = make(map[int64]string, len([[$varName]]))
+      var [[$varName]]ByID = make(map[int64]models.[[$belongsTo.Target]], len([[$varName]]))
       for idx := range [[$varName]] {
-        [[$field := field $class $belongsTo.Name -]]
-        [[$varName]]ByID[ [[$varName]][idx].ID ] = [[$varName]][idx].[[displayForBelongsTo $field]]
+        [[$varName]]ByID[ [[$varName]][idx].ID ] = [[$varName]][idx]
       }
       c.ViewArgs["[[$varName]]"] = [[$varName]]ByID
     }
@@ -924,6 +936,8 @@ var viewFieldsText = `[[$class := .class]]
   [[- else if editDisabled $column]]
   [[- else if isBelongsTo $class  $column ]]
     {{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" .[[belongsToClassName $class  $column | pluralize | camelizeDownFirst]] [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+  [[- else if valueInAnnotations $column "enumerationSource" ]]
+    {{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" .global.[[valueInAnnotations $column "enumerationSource"]] [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
   [[- else if hasEnumerations $column ]]
     {{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" "[[jsEnumeration $column.Restrictions.Enumerations | js]]" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
   [[- else if $column.Format ]]
@@ -991,7 +1005,17 @@ var viewIndexText = `[[$raw := .]]{{$raw := .}}{{set . "title" "[[.controllerNam
         <th><input type="checkbox" id="[[underscore .controllerName]]-all-checker"></th>
         [[- range $field := .class.Fields]]
           [[- if needDisplay $field]]
-        <th>{{table_column_title . "[[$field.Name]]" "[[localizeName $field]]"}}</th>
+            [[- $bt := belongsTo $raw.class $field]]
+            [[- if $bt ]]
+              [[- $refClass := class $bt.Target]]
+              [[- $referenceFields := referenceFields $field]]
+              [[- range $rField := $referenceFields ]]
+                [[- $referenceField := field $refClass $rField.Name]]
+        <th>{{table_column_title . "[[$field.Name]]" "[[if $rField.Label]][[$rField.Label]][[else]][[localizeName $referenceField]][[end]]"}}</th>
+              [[- end]]
+            [[- else]]
+        <th>{{table_column_title . "[[$field.Name]]" "[[localizeName $field ]]"}}</th>
+            [[- end -]]
           [[- end]]
         [[- end]]
         [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not]]
@@ -1005,34 +1029,43 @@ var viewIndexText = `[[$raw := .]]{{$raw := .}}{{set . "title" "[[.controllerNam
       {{- range $v := .[[camelizeDownFirst .modelName]]}}
         <tr>
           <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker" key="{{$v.ID}}" url="{{url "[[.controllerName]].Edit" $v.ID}}"></td>
-          [[range $column := .class.Fields]][[if needDisplay $column]]
-          [[- if isBelongsTo $.class  $column -]]
-          <td>{{index $raw.[[belongsToClassName $.class  $column | pluralize | camelizeDownFirst]] $v.[[goify $column.Name true]]}}</td>
-          [[else -]]
-          <td>{{[[if eq $column.Type "date"]]date [[else if eq $column.Type "datetime"]]datetime [[else if eq $column.Type "time"]]time [[end]]$v.[[goify $column.Name true]]}}</td>
-          [[end -]]
-          [[- end -]]
-          [[- end -]]
+          [[- range $column := .class.Fields]]
+            [[- if needDisplay $column]]
+              [[- $bt := belongsTo $raw.class $column]]
+              [[- if $bt ]]
+                  [[- $refClass := class $bt.Target]]
+                  [[- $referenceFields := referenceFields $column]]
+              {{- $rValue := index $raw.[[pluralize $refClass.Name | camelizeDownFirst]] $v.[[goify $column.Name true]]}}
+                  [[- range $rField := $referenceFields ]]
+                    [[- $referenceField := field $refClass $rField.Name]]
+              <td>{{$rValue.[[goify $referenceField.Name true]]}}</td>
+                  [[- end]]
+              [[- else]]
+              <td>{{[[if eq $column.Type "date"]]date [[else if eq $column.Type "datetime"]]datetime [[else if eq $column.Type "time"]]time [[end]]$v.[[goify $column.Name true]]}}</td>
+              [[- end]]
+            [[- end]]
+          [[- end]]
 
-          [[if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not -]]
-          {{if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}<td>
-          [[if editDisabled $raw.class | not -]]
-            {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]" -}}
-            <a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>
-            {{- end}}
-          [[- end]]
-          [[if deleteDisabled $raw.class | not -]]
-          {{if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}
-            <form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-inline" role="form" style="display: inline;">
-              <input type="hidden" name="_method" value="DELETE">
-              <input type="hidden" name="id" value="{{$v.ID}}">
-                <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">
-                  <i class="icon-search"></i> 删除
-                </a>
-            </form>
-            {{- end}}
-          [[- end]]
-          </td>{{end}}
+          [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not -]]
+            {{if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}<td>
+            [[if editDisabled $raw.class | not -]]
+              {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]" -}}
+              <a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>
+              {{- end}}
+            [[- end]]
+            [[- if deleteDisabled $raw.class | not -]]
+              {{- if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}
+              <form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-inline" role="form" style="display: inline;">
+                <input type="hidden" name="_method" value="DELETE">
+                <input type="hidden" name="id" value="{{$v.ID}}">
+                  <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">
+                    <i class="icon-search"></i> 删除
+                  </a>
+              </form>
+              {{- end}}
+            [[- end]]
+          </td>
+          {{- end}}
           [[- end]]
         </tr>
       <tbody>
@@ -1487,15 +1520,13 @@ type DB struct {
   Engine *xorm.Engine
 }
 
-[[range $class := .classes]]
+[[- range $class := .classes]]
 func (db *DB) [[pluralize $class.Name]]() *orm.Collection {
   return orm.New(func() interface{}{
     return &[[$class.Name]]{}
   })(db.Engine)
 }
-[[end]]
-
-
+[[- end]]
 
 func InitTables(engine *xorm.Engine) error {
   beans := []interface{}{[[range $class := .classes]]

@@ -65,10 +65,9 @@ func (c [[.controllerName]]) Index() revel.Result {
     if err != nil {
       errList = append(errList, "load [[$belongsTo.Target]] fail, " + err.Error())
     } else {
-      var [[$varName]]ByID = make(map[int64]string, len([[$varName]]))
+      var [[$varName]]ByID = make(map[int64]models.[[$belongsTo.Target]], len([[$varName]]))
       for idx := range [[$varName]] {
-        [[$field := field $class $belongsTo.Name -]]
-        [[$varName]]ByID[ [[$varName]][idx].ID ] = [[$varName]][idx].[[displayForBelongsTo $field]]
+        [[$varName]]ByID[ [[$varName]][idx].ID ] = [[$varName]][idx]
       }
       c.ViewArgs["[[$varName]]"] = [[$varName]]ByID
     }

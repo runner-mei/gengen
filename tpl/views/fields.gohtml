@@ -7,6 +7,8 @@
   [[- else if editDisabled $column]]
   [[- else if isBelongsTo $class  $column ]]
     {{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" .[[belongsToClassName $class  $column | pluralize | camelizeDownFirst]] [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+  [[- else if valueInAnnotations $column "enumerationSource" ]]
+    {{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" .global.[[valueInAnnotations $column "enumerationSource"]] [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
   [[- else if hasEnumerations $column ]]
     {{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" "[[jsEnumeration $column.Restrictions.Enumerations | js]]" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
   [[- else if $column.Format ]]

@@ -8,15 +8,13 @@ type DB struct {
   Engine *xorm.Engine
 }
 
-[[range $class := .classes]]
+[[- range $class := .classes]]
 func (db *DB) [[pluralize $class.Name]]() *orm.Collection {
   return orm.New(func() interface{}{
     return &[[$class.Name]]{}
   })(db.Engine)
 }
-[[end]]
-
-
+[[- end]]
 
 func InitTables(engine *xorm.Engine) error {
   beans := []interface{}{[[range $class := .classes]]

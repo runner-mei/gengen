@@ -21,14 +21,6 @@ func (cmd *GenerateStructCommand) generateStruct(cls *types.ClassSpec) error {
 	funcs := template.FuncMap{
 		"omitempty": func(t types.FieldSpec) bool {
 			return !t.IsRequired
-		},
-		"fieldExists": func(cls *types.ClassSpec, fieldName string) bool {
-			for _, field := range cls.Fields {
-				if field.Name == fieldName {
-					return true
-				}
-			}
-			return false
 		}}
 	params := map[string]interface{}{"namespace": cmd.ns,
 		"class": cls}

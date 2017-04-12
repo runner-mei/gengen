@@ -113,14 +113,6 @@ func (cmd *GenerateViewCommand) genrateView(cls *types.ClassSpec) error {
 				}
 			}
 			return ""
-		},
-		"isBelongsTo": func(cls *types.ClassSpec, f types.FieldSpec) bool {
-			for _, belongsTo := range cls.BelongsTo {
-				if belongsTo.Name == f.Name {
-					return true
-				}
-			}
-			return false
 		}}
 
 	err := cmd.executeTempate(cmd.override, []string{"views/index"}, funcs, params, filepath.Join(cmd.output, ctlName, "index.html"))
@@ -209,4 +201,27 @@ func HasFeature(f interface{}, name string) bool {
 		}
 	}
 	return false
+}
+
+func ValueInAnnotations(f interface{}, name string) interface{} {
+	var annotations map[string]interface{}
+	switch v := f.(type) {
+	case types.FieldSpec:
+		annotations = v.Annotations
+	case *types.FieldSpec:
+		annotations = v.Annotations
+	case *types.ClassSpec:
+		annotations = v.Annotations
+	case types.ClassSpec:
+		annotations = v.Annotations
+	default:
+		panic(fmt.Errorf("unknown type - %T - %v", f, f))
+	}
+
+	for k, ann := range annotations {
+		if k == name {
+			return ann
+		}
+	}
+	return nil
 }

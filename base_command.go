@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -19,6 +20,7 @@ type baseCommand struct {
 	output   string
 	theme    string
 	override bool
+	funcs    template.FuncMap
 }
 
 func (cmd *baseCommand) CopyFrom(b *baseCommand) {
@@ -92,6 +94,8 @@ func (cmd *baseCommand) newTemplate(name string, funcs template.FuncMap) (*templ
 		"deleteDisabled": func(f interface{}) bool {
 			return HasFeature(f, "deleteDisabled")
 		},
+		"valueInAnnotations": ValueInAnnotations,
+		"hasFeature":         HasFeature,
 		"hasAnyFeatures": func(f interface{}, names ...string) bool {
 			for _, nm := range names {
 				if HasFeature(f, nm) {
@@ -123,7 +127,29 @@ func (cmd *baseCommand) newTemplate(name string, funcs template.FuncMap) (*templ
 				}
 			}
 			panic(errors.New("field '" + fieldName + "' isn't exists in the " + cls.Name))
+		},
+		"isBelongsTo": func(cls *types.ClassSpec, f types.FieldSpec) bool {
+			for _, belongsTo := range cls.BelongsTo {
+				if belongsTo.Name == f.Name {
+					return true
+				}
+			}
+			return false
+		},
+		"belongsTo": func(cls *types.ClassSpec, f types.FieldSpec) *types.BelongsTo {
+			for _, belongsTo := range cls.BelongsTo {
+				if belongsTo.Name == f.Name {
+					return &belongsTo
+				}
+			}
+			return nil
 		}}
+
+	if len(cmd.funcs) != 0 {
+		for k, v := range cmd.funcs {
+			funcs[k] = v
+		}
+	}
 
 	bs, e := cmd.loadFile(name)
 	if e != nil {
@@ -184,6 +210,49 @@ func (cmd *baseCommand) run(args []string, cb func(table *types.ClassSpec) error
 	if nil != e {
 		return e
 	}
+	if cmd.funcs == nil {
+		cmd.funcs = template.FuncMap{}
+	}
+	cmd.funcs["class"] = func(name string) *types.ClassSpec {
+		for _, cs := range tables {
+			if cs.Name == name {
+				return cs
+			}
+		}
+		return nil
+	}
+	cmd.funcs["referenceFields"] = ReferenceFields
+	/*
+			cls
+			var refCls *types.ClassSpec
+			for _, cs := range tables {
+				if cs.Name == name {
+					refCls = cs
+					break
+				}
+			}
+			if refCls == nil {
+				panic(errors.New("referenceFields of '" + f.Name + "' isn't string array in the " + cls.Name))
+			}
+
+			var fields = make([]types.FieldSpec, 0, len(names))
+			for _, name := range names {
+				found := false
+				for _, field := range cls.Fields {
+					if field.Name == fieldName {
+						found = true
+						fields = append(fields, field)
+						break
+					}
+				}
+				if !found {
+					panic(errors.New("field '" + name + "' isn't exists in the " + cls.Name))
+				}
+			}
+			return fields
+		}
+	*/
+
 	if len(args) > 0 {
 		for _, name := range args {
 			log.Println("[GEN] ", name)
@@ -276,4 +345,60 @@ func (cmd *baseCommand) executeTempate(override bool, names []string, funcs temp
 		}
 	}
 	return nil
+}
+
+type ReferenceField struct {
+	Name  string
+	Label string
+}
+
+func ReferenceFields(f types.FieldSpec) []ReferenceField {
+	if f.Annotations == nil {
+		return nil
+	}
+
+	a := f.Annotations["referenceFields"]
+	if a == nil {
+		return nil
+	}
+	var names []ReferenceField
+	switch values := a.(type) {
+	case []string:
+		for _, s := range values {
+			names = append(names, ReferenceField{Name: s})
+		}
+	case []interface{}:
+		names = make([]ReferenceField, 0, len(values))
+		for _, v := range values {
+			switch value := v.(type) {
+			case string:
+				names = append(names, ReferenceField{Name: value})
+			case map[string]interface{}:
+				field := ReferenceField{Name: fmt.Sprint(value["name"])}
+				if label := value["label"]; label != nil {
+					field.Label = fmt.Sprint(label)
+				}
+				names = append(names, field)
+			case map[interface{}]interface{}:
+				field := ReferenceField{Name: fmt.Sprint(value["name"])}
+				for k, vv := range value {
+					switch fmt.Sprint(k) {
+					case "name":
+						field.Name = fmt.Sprint(vv)
+					case "label":
+						field.Label = fmt.Sprint(vv)
+					}
+				}
+				names = append(names, field)
+			default:
+				fmt.Printf("%T %v\r\n", v, v)
+				panic(errors.New("referenceFields of '" + f.Name + "' isn't string array or object array"))
+			}
+		}
+	default:
+		fmt.Printf("%T %v\r\n", a, a)
+		panic(errors.New("referenceFields of '" + f.Name + "' isn't string array or object array"))
+	}
+
+	return names
 }
