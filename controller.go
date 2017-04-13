@@ -32,7 +32,7 @@ func (cmd *GenerateControllerCommand) Run(args []string) error {
 			}
 
 			fields := ReferenceFields(f)
-			if len(fields) == 1 {
+			if len(fields) >= 1 {
 				return Goify(fields[0].Name, true)
 			}
 

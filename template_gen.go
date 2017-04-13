@@ -1002,7 +1002,9 @@ var viewIndexText = `[[$raw := .]]{{$raw := .}}{{set . "title" "[[.controllerNam
     <table class="table table-bordered table-striped table-highlight ">
       <thead>
       <tr>
+        [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not -]]
         <th><input type="checkbox" id="[[underscore .controllerName]]-all-checker"></th>
+        [[- end]]
         [[- range $field := .class.Fields]]
           [[- if needDisplay $field]]
             [[- $bt := belongsTo $raw.class $field]]
@@ -1028,7 +1030,9 @@ var viewIndexText = `[[$raw := .]]{{$raw := .}}{{set . "title" "[[.controllerNam
       <tbody>
       {{- range $v := .[[camelizeDownFirst .modelName]]}}
         <tr>
-          <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker" key="{{$v.ID}}" url="{{url "[[.controllerName]].Edit" $v.ID}}"></td>
+        [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not -]]
+          <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker" key="{{$v.ID}}"[[- if editDisabled $raw.class | not -]] url="{{url "[[.controllerName]].Edit" $v.ID}}"[[end]]></td>
+        [[- end]]
           [[- range $column := .class.Fields]]
             [[- if needDisplay $column]]
               [[- $bt := belongsTo $raw.class $column]]
@@ -1542,12 +1546,15 @@ func InitTables(engine *xorm.Engine) error {
       if !strings.Contains(err.Error(), "already exists") {
         return err
       }
+      revel.WARN.Println(err)
     }
 
     if err := engine.CreateUniques(bean); err != nil {
-      if !strings.Contains(err.Error(), "already exists") {
+      if !strings.Contains(err.Error(), "already exists") &&
+        !strings.Contains(err.Error(), "create unique index") {
         return err
       }
+      revel.WARN.Println(err)
     }
   }
   return nil
