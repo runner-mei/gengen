@@ -20,6 +20,7 @@ type ClassSpec struct {
 	Keys         [][]string  `json:"keys,omitempty" yaml:"keys,omitempty"`
 	Fields       []FieldSpec `json:"fields,omitempty" yaml:"fields,omitempty"`
 
+	PrimaryKey          []string              `json:"primaryKey,omitempty" yaml:"primaryKey,omitempty"`
 	HasMany             []HasMany             `json:"hasMany,omitempty" yaml:"hasMany,omitempty"`
 	BelongsTo           []BelongsTo           `json:"belongsTo,omitempty" yaml:"belongsTo,omitempty"`
 	HasAndBelongsToMany []HasAndBelongsToMany `json:"hasAndBelongsToMany,omitempty" yaml:"hasAndBelongsToMany,omitempty"`

@@ -17,9 +17,11 @@
     <table class="table table-bordered table-striped table-highlight ">
       <thead>
       <tr>
-        [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not -]]
-        <th><input type="checkbox" id="[[underscore .controllerName]]-all-checker"></th>
-        [[- end]]
+        [[- if $raw.class.PrimaryKey | not]]
+          [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not -]]
+          <th><input type="checkbox" id="[[underscore .controllerName]]-all-checker" /></th>
+          [[- end]]
+        [[end]]
         [[- range $field := .class.Fields]]
           [[- if needDisplay $field]]
             [[- $bt := belongsTo $raw.class $field]]
@@ -43,10 +45,26 @@
       </tr>
       </thead>
       <tbody>
-      {{- range $v := .[[camelizeDownFirst .modelName]]}}
+      {{- range $idx $v := .[[camelizeDownFirst .modelName]]}}
         <tr>
-        [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not -]]
-          <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker" key="{{$v.ID}}"[[- if editDisabled $raw.class | not -]] url="{{url "[[.controllerName]].Edit" $v.ID}}"[[end]]></td>
+        
+        [[- if $raw.class.PrimaryKey | not]]
+          [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not -]]
+            <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker"
+            [[- if $raw.class.PrimaryKey]]
+              [[- if deleteDisabled $raw.class | not]] del.url="{{url "[[.controllerName]].Delete" 
+                [[- range $fieldName := $raw.class.PrimaryKey]] $v.[[goify $fieldName true]]
+                [[- end]]}}"
+              [[- end]]
+              [[- if editDisabled $raw.class | not]] edit.url="{{url "[[.controllerName]].Edit" 
+                [[- range $fieldName := $raw.class.PrimaryKey]] $v.[[goify $fieldName true]]
+                [[- end]]}}"
+              [[- end]]
+            [[- else]]
+              key="{{$v.ID}}"[[- if editDisabled $raw.class | not]] url="{{url "[[.controllerName]].Edit" $v.ID}}"
+            [[- end -]]/></td>
+          [[- end]]
+        [[- end]]
         [[- end]]
           [[- range $column := .class.Fields]]
             [[- if needDisplay $column]]
@@ -65,26 +83,52 @@
             [[- end]]
           [[- end]]
 
+
+
           [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not -]]
-            {{if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}<td>
-            [[if editDisabled $raw.class | not -]]
-              {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]" -}}
-              <a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>
-              {{- end}}
+            [[- if $raw.class.PrimaryKey]]
+              [[- if editDisabled $raw.class | not]]
+                {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]" -}}
+              <a href='{{url "[[.controllerName]].Edit"
+                [[- range $fieldName := $raw.class.PrimaryKey]] $v.[[goify $fieldName true]]
+                [[- end]]}}'>编辑</a>
+                {{- end}}
+              [[- end]]
+              [[- if deleteDisabled $raw.class | not]]
+                {{if current_user_has_del_permission $raw "[[underscore .controllerName]]" -}}
+               <form id='[[underscore .controllerName]]-delete-{{$idx}}' action="{{url "[[.controllerName]].Delete"}}" method="POST" class="form-inline" role="form" style="display: inline;">
+                  <input type="hidden" name="_method" value="DELETE">
+                [[- range $fieldName := $raw.class.PrimaryKey]]
+                  <input type="hidden" name="[[$fieldName]]" value="{{$v.[[goify $fieldName true]]}}">
+                [[- end -]]
+                  <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$idx}}').submit()">
+                      <i class="icon-search"></i> 删除
+                    </a>
+                </form>
+                {{- end}}
+              [[- end]]
+            [[- else]]
+
+              {{if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}<td>
+              [[if editDisabled $raw.class | not -]]
+                {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]" -}}
+                <a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>
+                {{- end}}
+              [[- end]]
+              [[- if deleteDisabled $raw.class | not -]]
+                {{- if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}
+                <form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-inline" role="form" style="display: inline;">
+                  <input type="hidden" name="_method" value="DELETE">
+                  <input type="hidden" name="id" value="{{$v.ID}}">
+                    <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">
+                      <i class="icon-search"></i> 删除
+                    </a>
+                </form>
+                {{- end}}
+              [[- end]]
             [[- end]]
-            [[- if deleteDisabled $raw.class | not -]]
-              {{- if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}
-              <form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-inline" role="form" style="display: inline;">
-                <input type="hidden" name="_method" value="DELETE">
-                <input type="hidden" name="id" value="{{$v.ID}}">
-                  <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">
-                    <i class="icon-search"></i> 删除
-                  </a>
-              </form>
-              {{- end}}
-            [[- end]]
-          </td>
-          {{- end}}
+            </td>
+            {{- end}}
           [[- end]]
         </tr>
       <tbody>

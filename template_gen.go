@@ -870,6 +870,54 @@ func (c [[.controllerName]]) Update([[camelizeDownFirst .class.Name]] *models.[[
 [[- end]]
 
 [[if deleteDisabled .class | not -]]
+[[if .class.PrimaryKey]]
+// Delete 按 primaryKey 删除记录
+func (c [[.controllerName]]) Delete([[- range $idx, $fieldName := .class.PrimaryKey]]
+[[- $field := field $.class $fieldName]]
+[[- if ne $idx 0]], [[end]][[$fieldName]] [[gotype $field.Type]]
+[[- end]]) revel.Result {
+  var cond = orm.Cond{}
+[[- range $fieldName := .class.PrimaryKey]]
+  [[- $field := field $.class $fieldName]]
+  [[- if eq $field.Type "integer" "number" "biginteger" "int" "int8" "int16" "int32" "int64" "uint" "uint8" "uint16" "uint32" "uint64" "float" "float32" "float64"]]
+    if [[$fieldName]] == 0 {
+      c.Flash.Error("[[$fieldName]] is missing")
+      return c.Redirect(routes.[[$.controllerName]].Index())
+    }
+  [[- else if eq $field.Type "datetime"]]
+    if [[$fieldName]].IsZero() {
+      c.Flash.Error("[[$fieldName]] is missing")
+      return c.Redirect(routes.[[$.controllerName]].Index())
+    } 
+  [[- else if eq $field.Type "ipAddress" "ipaddress" "net.IP" "macAddress" "net.HardwareAddress"]]
+    if [[$fieldName]] == nil {
+      c.Flash.Error("[[$fieldName]] is missing")
+      return c.Redirect(routes.[[$.controllerName]].Index())
+    }
+  [[- else]]
+    if [[$fieldName]] == "" {
+      c.Flash.Error("[[$fieldName]] is missing")
+      return c.Redirect(routes.[[$.controllerName]].Index())
+    }
+  [[- end]]
+  cond["[[$field.Name]] ="] = [[$fieldName]]
+[[- end]]
+
+  rowsEffected, err :=  c.Lifecycle.DB.[[.modelName]]().Where(cond).Delete()
+  if nil != err {
+    if err == orm.ErrNotFound {
+      c.Flash.Error(revel.Message(c.Request.Locale, "delete.record_not_found"))
+    } else {
+      c.Flash.Error(err.Error())
+    }
+  } else if rowsEffected <= 0 {
+    c.Flash.Error(revel.Message(c.Request.Locale, "delete.record_not_found"))
+  } else {
+    c.Flash.Success(revel.Message(c.Request.Locale, "delete.success"))
+  }
+  return c.Redirect(routes.[[.controllerName]].Index())
+}
+[[else]]
 // Delete 按 id 删除记录
 func (c [[.controllerName]]) Delete(id int64) revel.Result {
   err :=  c.Lifecycle.DB.[[.modelName]]().Id(id).Delete()
@@ -899,6 +947,7 @@ func (c [[.controllerName]]) DeleteByIDs(id_list []int64) revel.Result {
   }
   return c.Redirect(routes.[[.controllerName]].Index())
 }
+[[- end]]
 [[- end]]`
 
 var viewEditText = `{{set . "title" "编辑[[.controllerName]]"}}
@@ -1003,7 +1052,7 @@ var viewIndexText = `[[$raw := .]]{{$raw := .}}{{set . "title" "[[.controllerNam
       <thead>
       <tr>
         [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not -]]
-        <th><input type="checkbox" id="[[underscore .controllerName]]-all-checker"></th>
+        <th><input type="checkbox" id="[[underscore .controllerName]]-all-checker" /></th>
         [[- end]]
         [[- range $field := .class.Fields]]
           [[- if needDisplay $field]]
@@ -1028,10 +1077,23 @@ var viewIndexText = `[[$raw := .]]{{$raw := .}}{{set . "title" "[[.controllerNam
       </tr>
       </thead>
       <tbody>
-      {{- range $v := .[[camelizeDownFirst .modelName]]}}
+      {{- range $idx $v := .[[camelizeDownFirst .modelName]]}}
         <tr>
         [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not -]]
-          <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker" key="{{$v.ID}}"[[- if editDisabled $raw.class | not -]] url="{{url "[[.controllerName]].Edit" $v.ID}}"[[end]]></td>
+          <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker"
+          [[- if $raw.class.PrimaryKey]]
+            [[- if deleteDisabled $raw.class | not]] del.url="{{url "[[.controllerName]].Delete" 
+              [[- range $fieldName := $raw.class.PrimaryKey]] $v.[[goify $fieldName true]]
+              [[- end]]}}"
+            [[- end]]
+            [[- if editDisabled $raw.class | not]] edit.url="{{url "[[.controllerName]].Edit" 
+              [[- range $fieldName := $raw.class.PrimaryKey]] $v.[[goify $fieldName true]]
+              [[- end]]}}"
+            [[- end]]
+          [[- else]]
+            key="{{$v.ID}}"[[- if editDisabled $raw.class | not]] url="{{url "[[.controllerName]].Edit" $v.ID}}"
+          [[- end -]]/></td>
+        [[- end]]
         [[- end]]
           [[- range $column := .class.Fields]]
             [[- if needDisplay $column]]
@@ -1050,26 +1112,52 @@ var viewIndexText = `[[$raw := .]]{{$raw := .}}{{set . "title" "[[.controllerNam
             [[- end]]
           [[- end]]
 
+
+
           [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not -]]
-            {{if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}<td>
-            [[if editDisabled $raw.class | not -]]
-              {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]" -}}
-              <a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>
-              {{- end}}
+            [[- if $raw.class.PrimaryKey]]
+              [[- if editDisabled $raw.class | not]]
+                {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]" -}}
+              <a href='{{url "[[.controllerName]].Edit"
+                [[- range $fieldName := $raw.class.PrimaryKey]] $v.[[goify $fieldName true]]
+                [[- end]]}}'>编辑</a>
+                {{- end}}
+              [[- end]]
+              [[- if deleteDisabled $raw.class | not]]
+                {{if current_user_has_del_permission $raw "[[underscore .controllerName]]" -}}
+               <form id='[[underscore .controllerName]]-delete-{{$idx}}' action="{{url "[[.controllerName]].Delete"}}" method="POST" class="form-inline" role="form" style="display: inline;">
+                  <input type="hidden" name="_method" value="DELETE">
+                [[- range $fieldName := $raw.class.PrimaryKey]]
+                  <input type="hidden" name="[[$fieldName]]" value="{{$v.[[goify $fieldName true]]}}">
+                [[- end -]]
+                  <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$idx}}').submit()">
+                      <i class="icon-search"></i> 删除
+                    </a>
+                </form>
+                {{- end}}
+              [[- end]]
+            [[- else]]
+
+              {{if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}<td>
+              [[if editDisabled $raw.class | not -]]
+                {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]" -}}
+                <a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>
+                {{- end}}
+              [[- end]]
+              [[- if deleteDisabled $raw.class | not -]]
+                {{- if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}
+                <form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-inline" role="form" style="display: inline;">
+                  <input type="hidden" name="_method" value="DELETE">
+                  <input type="hidden" name="id" value="{{$v.ID}}">
+                    <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">
+                      <i class="icon-search"></i> 删除
+                    </a>
+                </form>
+                {{- end}}
+              [[- end]]
             [[- end]]
-            [[- if deleteDisabled $raw.class | not -]]
-              {{- if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}
-              <form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-inline" role="form" style="display: inline;">
-                <input type="hidden" name="_method" value="DELETE">
-                <input type="hidden" name="id" value="{{$v.ID}}">
-                  <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">
-                    <i class="icon-search"></i> 删除
-                  </a>
-              </form>
-              {{- end}}
-            [[- end]]
-          </td>
-          {{- end}}
+            </td>
+            {{- end}}
           [[- end]]
         </tr>
       <tbody>
