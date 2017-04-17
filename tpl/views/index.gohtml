@@ -30,10 +30,10 @@
               [[- $referenceFields := referenceFields $field]]
               [[- range $rField := $referenceFields ]]
                 [[- $referenceField := field $refClass $rField.Name]]
-        <th>{{table_column_title . "[[$field.Name]]" "[[if $rField.Label]][[$rField.Label]][[else]][[localizeName $referenceField]][[end]]"}}</th>
+        {{table_column_title . "[[$field.Name]]" "[[if $rField.Label]][[$rField.Label]][[else]][[localizeName $referenceField]][[end]]"}}
               [[- end]]
             [[- else]]
-        <th>{{table_column_title . "[[$field.Name]]" "[[localizeName $field ]]"}}</th>
+        {{table_column_title . "[[$field.Name]]" "[[localizeName $field ]]"}}
             [[- end -]]
           [[- end]]
         [[- end]]
