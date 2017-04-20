@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"text/template"
 
-	"github.com/runner-mei/gengen/types"
+	"github.com/three-plus-three/gengen/types"
 )
 
 // HandlerCommand - 生成控制器

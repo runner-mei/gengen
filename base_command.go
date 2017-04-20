@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"text/template"
 
-	"github.com/runner-mei/gengen/types"
+	"github.com/three-plus-three/gengen/types"
 )
 
 // GenerateModelsCommand - 生成数据库模型代码

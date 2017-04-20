@@ -10,7 +10,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/runner-mei/gengen/types"
+	"github.com/three-plus-three/gengen/types"
 )
 
 // GenerateViewCommand - 生成视图

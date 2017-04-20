@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/manveru/faker"
-	"github.com/runner-mei/gengen/types"
+	"github.com/three-plus-three/gengen/types"
 )
 
 // GenerateUnitTestCommand - 生成视图
