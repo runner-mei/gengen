@@ -1024,7 +1024,7 @@ var viewIndexText = `[[$raw := .]]{{$raw := .}}{{set . "title" "[[index_label .c
 {{append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
 {{template "[[if .layouts]][[.layouts]][[end]]header[[.theme]].html" .}}
     {{template "[[.controllerName]]/quick-bar.html" .}}
-    <table id="[[.class.Name]]_table" class="table table-bordered table-striped table-highlight ">
+    <table id="[[.class.Name]]Table" class="table table-bordered table-striped table-highlight ">
       <thead>
       <tr>
         [[- if $raw.class.PrimaryKey | not]]
