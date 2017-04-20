@@ -1,12 +1,6 @@
-{{set . "title" "编辑[[.controllerName]]"}}
+{{set . "title" "[[edit_label .class]]"}}
 {{append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
-{{template "[[if .layouts]][[.layouts]][[end]]header.html" .}}
-<div class="ibox float-e-margins">
-    <div class="ibox-title">
-        [[edit_label .class]]
-        <div class="ibox-tools"></div>
-    </div>
-    <div class="ibox-content">
+{{template "[[if .layouts]][[.layouts]][[end]]header[[.theme]].html" .}}
         <form action="{{url "[[.controllerName]].Update" }}" method="POST" class="form-horizontal" id="[[underscore .controllerName]]-edit">
         <input type="hidden" name="_method" value="PUT">
         {{hidden_field . "[[camelizeDownFirst .class.Name]].ID" | render}}
@@ -20,6 +14,4 @@
             </div>
         </div>
         </form>
-    </div>
-</div>
-{{template "[[if .layouts]][[.layouts]][[end]]footer.html" .}}
+{{template "[[if .layouts]][[.layouts]][[end]]footer[[.theme]].html" .}}

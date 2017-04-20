@@ -1,26 +1,26 @@
     <div class="quick-actions btn-group m-b">
-        [[if newDisabled .class | not -]]
+        [[- if newDisabled .class | not]]
         {{- if current_user_has_new_permission . "[[underscore .controllerName]]"}}
         <a id='[[underscore .controllerName]]-new' href='{{url "[[.controllerName]].New"}}'  class="btn btn-outline btn-default" method="" mode="*" confirm="" client="false" target="_self">
             <i class="fa fa-add"></i>添加
         </a>
         {{- end}}
         [[- end]]
-        [[if editDisabled .class | not -]]
+        [[- if editDisabled .class | not]]
         {{- if current_user_has_edit_permission . "[[underscore .controllerName]]"}}
         <a id='[[underscore .controllerName]]-edit' href='' url='{{url "[[.controllerName]].Edit"}}'  class="btn btn-outline btn-default" method="" mode="1" confirm="" client="false" target="_self">
             <i class="fa fa-edit"></i>编辑
         </a>
         {{- end}}
         [[- end]]
-        [[if deleteDisabled .class | not -]]
+        [[- if .class.PrimaryKey | not]][[if deleteDisabled .class | not]]
         {{- if current_user_has_del_permission . "[[underscore .controllerName]]"}}
         <a id='[[underscore .controllerName]]-delete' href='' url='{{url "[[.controllerName]].DeleteByIDs"}}'  class="btn btn-outline btn-default" mode="+" target="_self">
             <i class="fa fa-trash"></i> 删除
         </a>
         {{- end}}
-        [[- end]]
-        [[- if fieldExists .class "name" -]]
+        [[- end]][[- end]]
+        [[- if fieldExists .class "name"]]
         <form action="{{url "[[.controllerName]].Index" 0 0}}" method="POST" id='[[underscore .controllerName]]-quick-form' class="form-inline"  style="display: inline;">
             <input type="text" name="query">
             <a href="javascript:document.getElementById('[[underscore .controllerName]]-quick-form').submit()" >

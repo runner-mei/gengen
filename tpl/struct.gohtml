@@ -3,22 +3,27 @@ type [[.class.Name]] struct {
 [[- range $field := .class.Fields ]]
   [[goify $field.Name  true]] [[gotype $field.Type]] `json:"[[underscore $field.Name]]
   [[- if omitempty $field]],omitempty[[end -]]
-  " xorm:"[[underscore $field.Name]]
-  [[- if eq $field.Name "id"]] pk autoincr
-  [[- else if eq $field.Name "created_at"]] created
-  [[- else if eq $field.Name "updated_at"]] updated
-  [[- end -]]
-  [[- if $field.IsUniquely -]]
-    [[- if ne $field.Name "id"]] unique[[end -]]
+  [[- if hasFeature $field "async" -]]
+    " xorm:"-"`
+  [[- else -]]
+    " xorm:"[[underscore $field.Name]]
+    [[- if eq $field.Name "id"]] pk autoincr
+    [[- else if eq $field.Name "created_at"]] created
+    [[- else if eq $field.Name "updated_at"]] updated
+    [[- end -]]
+    [[- if $field.IsUniquely -]]
+      [[- if ne $field.Name "id"]] unique[[end -]]
+    [[- end]]
+    [[- if $field.IsRequired -]]
+      [[- if ne $field.Name "id"]] notnull[[end -]]
+    [[- end -]]
+    [[- if $field.DefaultValue]] default('[[$field.DefaultValue]]')[[end]]"`
   [[- end]]
-  [[- if $field.IsRequired -]]
-    [[- if ne $field.Name "id"]] notnull[[end -]]
-  [[- end -]]
-  [[- if $field.DefaultValue]] default('[[$field.DefaultValue]]')[[end]]"`
 [[- end]]
 
   [[- range $belongsTo := .class.BelongsTo ]]
-    [[- if fieldExists $class $belongsTo.Name | not ]][[$belongsTo.AttributeName false]] int64 `json:"[[$belongsTo.AttributeName true]]" xorm:"[[$belongsTo.AttributeName true]]"`
+    [[- if fieldExists $class $belongsTo.Name | not ]]
+  [[$belongsTo.AttributeName false]] int64 `json:"[[$belongsTo.AttributeName true]]" xorm:"[[$belongsTo.AttributeName true]]"`
     [[- end]]
   [[- end]]
 }

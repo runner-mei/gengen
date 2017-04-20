@@ -25,7 +25,7 @@ func (c [[.controllerName]]) Index() revel.Result {
 
   total, err := c.Lifecycle.DB.[[.modelName]]().Where().And(cond).Count()
   if err != nil {
-    c.ViewArgs["errors"] = err.Error()
+    c.Validation.Error(err.Error())
     return c.Render(err)
   }
 
@@ -43,13 +43,12 @@ func (c [[.controllerName]]) Index() revel.Result {
     Limit(pageSize).
     All(&[[camelizeDownFirst .modelName]])
   if err != nil {
-    c.ViewArgs["errors"] = err.Error()
+    c.Validation.Error(err.Error())
     return c.Render()
   }
 
   [[if .class.BelongsTo -]]
   if len([[camelizeDownFirst .modelName]]) > 0 {
-    var errList []string
     [[range $belongsTo := .class.BelongsTo -]]
     [[- $targetName := pluralize $belongsTo.Target -]]
     [[- $varName := camelizeDownFirst $targetName]]
@@ -63,7 +62,7 @@ func (c [[.controllerName]]) Index() revel.Result {
       And(orm.Cond{"id IN": [[camelizeDownFirst $belongsTo.Target]]IDList}).
       All(&[[$varName]])
     if err != nil {
-      errList = append(errList, "load [[$belongsTo.Target]] fail, " + err.Error())
+      c.Validation.Error("load [[$belongsTo.Target]] fail, " + err.Error())
     } else {
       var [[$varName]]ByID = make(map[int64]models.[[$belongsTo.Target]], len([[$varName]]))
       for idx := range [[$varName]] {
@@ -72,9 +71,6 @@ func (c [[.controllerName]]) Index() revel.Result {
       c.ViewArgs["[[$varName]]"] = [[$varName]]ByID
     }
     [[- end]]
-    if len(errList) > 0 {
-      c.ViewArgs["errors"] = errList
-    }
   }
   [[- end]]
 
@@ -86,14 +82,13 @@ func (c [[.controllerName]]) Index() revel.Result {
 // New 编辑新建记录
 func (c [[.controllerName]]) New() revel.Result {
   [[if .class.BelongsTo -]]
-  var errList []string
   var err error
   [[range $belongsTo := .class.BelongsTo ]]  
   [[$targetName := pluralize $belongsTo.Target]][[$varName := camelizeDownFirst $targetName]]var [[$varName]] []models.[[$belongsTo.Target]]
   err = c.Lifecycle.DB.[[$targetName]]().Where().
     All(&[[$varName]])
   if err != nil {
-    errList = append(errList, "load [[$belongsTo.Target]] fail, " + err.Error())
+    c.Validation.Error("load [[$belongsTo.Target]] fail, " + err.Error())
     c.ViewArgs["[[$varName]]"] = []forms.InputChoice{}
   } else {
     [[$field := field $class $belongsTo.Name -]]
@@ -107,10 +102,6 @@ func (c [[.controllerName]]) New() revel.Result {
     c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
   }
   [[- end]]
-
-  if len(errList) > 0 {
-    c.ViewArgs["errors"] = errList
-  }
   [[- end]]
   return c.Render()
 }
@@ -157,13 +148,12 @@ func (c [[.controllerName]]) Edit(id int64) revel.Result {
   }
 
   [[if .class.BelongsTo -]]
-  var errList []string
   [[range $belongsTo := .class.BelongsTo ]]  
   [[$targetName := pluralize $belongsTo.Target]][[$varName := camelizeDownFirst $targetName]]var [[$varName]] []models.[[$belongsTo.Target]]
   err = c.Lifecycle.DB.[[$targetName]]().Where().
     All(&[[$varName]])
   if err != nil {
-    errList = append(errList, "load [[$belongsTo.Target]] fail, " + err.Error())
+    c.Validation.Error("load [[$belongsTo.Target]] fail, " + err.Error())
     c.ViewArgs["[[$varName]]"] = []forms.InputChoice{}
   } else {
     [[$field := field $class $belongsTo.Name -]]
@@ -175,10 +165,6 @@ func (c [[.controllerName]]) Edit(id int64) revel.Result {
       })
     }
     c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
-  }
-
-  if len(errList) > 0 {
-    c.ViewArgs["errors"] = errList
   }
   [[- end]]
   [[- end]]

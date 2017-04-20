@@ -1,13 +1,7 @@
-{{set . "title" "新建[[.controllerName]]"}}
+{{set . "title" "[[new_label .class]]"}}
 {{append . "moreStyles" "/public/css/form.css"}}
 {{append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
-{{template "[[if .layouts]][[.layouts]][[end]]header.html" .}}
-<div class="ibox float-e-margins">
-    <div class="ibox-title">
-        [[new_label .class]]
-        <div class="ibox-tools"></div>
-    </div>
-    <div class="ibox-content">
+{{template "[[if .layouts]][[.layouts]][[end]]header[[.theme]].html" .}}
         <form action="{{url "[[.controllerName]].Create" }}" method="POST" class="form-horizontal" id="[[underscore .controllerName]]-insert">
         {{- $inEditMode := .inEditMode}}{{ set . "inEditMode" true}}
         {{template "[[.controllerName]]/edit_fields.html" .}}
@@ -19,6 +13,4 @@
             </div>
         </div>
         </form>
-    </div>
-</div>
-{{template "[[if .layouts]][[.layouts]][[end]]footer.html" .}}
+{{template "[[if .layouts]][[.layouts]][[end]]footer[[.theme]].html" .}}

@@ -1,20 +1,13 @@
-[[$raw := .]]{{$raw := .}}{{set . "title" "[[.controllerName]]"}}
+[[$raw := .]]{{$raw := .}}{{set . "title" "[[index_label .class]]"}}
 {{if eq .RunMode "dev"}}
 {{append . "moreScripts" "/public/js/plugins/bootbox/bootbox.js"}}
 {{else}}
 {{append . "moreScripts" "/public/js/plugins/bootbox/bootbox.min.js"}}
 {{end}}
 {{append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
-{{template "[[if .layouts]][[.layouts]][[end]]header.html" .}}
-
-<div class="ibox float-e-margins">
-    <div class="ibox-title">
-        [[index_label .class]]
-        <div class="ibox-tools"></div>
-    </div>
-    <div class="ibox-content">
+{{template "[[if .layouts]][[.layouts]][[end]]header[[.theme]].html" .}}
     {{template "[[.controllerName]]/quick-bar.html" .}}
-    <table class="table table-bordered table-striped table-highlight ">
+    <table id="[[.class.Name]]Table" class="table table-bordered table-striped table-highlight ">
       <thead>
       <tr>
         [[- if $raw.class.PrimaryKey | not]]
@@ -22,6 +15,7 @@
           <th><input type="checkbox" id="[[underscore .controllerName]]-all-checker" /></th>
           [[- end]]
         [[end]]
+
         [[- range $field := .class.Fields]]
           [[- if needDisplay $field]]
             [[- $bt := belongsTo $raw.class $field]]
@@ -37,19 +31,19 @@
             [[- end -]]
           [[- end]]
         [[- end]]
-        [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not]]
+
+      [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not]]
         {{- if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}
         <th>操作</th>
         {{- end}}
-        [[- end]]
+      [[- end]]
       </tr>
       </thead>
       <tbody>
-      {{- range $idx $v := .[[camelizeDownFirst .modelName]]}}
-        <tr>
-        
+      {{- range $idx, $v := .[[camelizeDownFirst .modelName]]}}
+        <tr [[- if $raw.class.PrimaryKey | not]] x-record-key="{{$v.ID}}"[[end]]>
         [[- if $raw.class.PrimaryKey | not]]
-          [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not -]]
+          [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not]]
             <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker"
             [[- if $raw.class.PrimaryKey]]
               [[- if deleteDisabled $raw.class | not]] del.url="{{url "[[.controllerName]].Delete" 
@@ -60,82 +54,90 @@
                 [[- range $fieldName := $raw.class.PrimaryKey]] $v.[[goify $fieldName true]]
                 [[- end]]}}"
               [[- end]]
-            [[- else]]
-              key="{{$v.ID}}"[[- if editDisabled $raw.class | not]] url="{{url "[[.controllerName]].Edit" $v.ID}}"
-            [[- end -]]/></td>
-          [[- end]]
-        [[- end]]
-        [[- end]]
-          [[- range $column := .class.Fields]]
-            [[- if needDisplay $column]]
-              [[- $bt := belongsTo $raw.class $column]]
-              [[- if $bt ]]
-                  [[- $refClass := class $bt.Target]]
-                  [[- $referenceFields := referenceFields $column]]
-              {{- $rValue := index $raw.[[pluralize $refClass.Name | camelizeDownFirst]] $v.[[goify $column.Name true]]}}
-                  [[- range $rField := $referenceFields ]]
-                    [[- $referenceField := field $refClass $rField.Name]]
-              <td>{{$rValue.[[goify $referenceField.Name true]]}}</td>
-                  [[- end]]
-              [[- else]]
-              <td>{{[[if eq $column.Type "date"]]date [[else if eq $column.Type "datetime"]]datetime [[else if eq $column.Type "time"]]time [[end]]$v.[[goify $column.Name true]]}}</td>
-              [[- end]]
+            [[- else]] key="{{$v.ID}}"
+              [[- if editDisabled $raw.class | not]] url="{{url "[[.controllerName]].Edit" $v.ID}}"
+              [[- end -]]/></td>
             [[- end]]
           [[- end]]
+        [[- end]]
 
-
-
-          [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not -]]
-            [[- if $raw.class.PrimaryKey]]
-              [[- if editDisabled $raw.class | not]]
-                {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]" -}}
-              <a href='{{url "[[.controllerName]].Edit"
-                [[- range $fieldName := $raw.class.PrimaryKey]] $v.[[goify $fieldName true]]
-                [[- end]]}}'>编辑</a>
-                {{- end}}
-              [[- end]]
-              [[- if deleteDisabled $raw.class | not]]
-                {{if current_user_has_del_permission $raw "[[underscore .controllerName]]" -}}
-               <form id='[[underscore .controllerName]]-delete-{{$idx}}' action="{{url "[[.controllerName]].Delete"}}" method="POST" class="form-inline" role="form" style="display: inline;">
-                  <input type="hidden" name="_method" value="DELETE">
-                [[- range $fieldName := $raw.class.PrimaryKey]]
-                  <input type="hidden" name="[[$fieldName]]" value="{{$v.[[goify $fieldName true]]}}">
-                [[- end -]]
-                  <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$idx}}').submit()">
-                      <i class="icon-search"></i> 删除
-                    </a>
-                </form>
-                {{- end}}
-              [[- end]]
-            [[- else]]
-
-              {{if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}<td>
-              [[if editDisabled $raw.class | not -]]
-                {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]" -}}
-                <a href='{{url "[[.controllerName]].Edit" $v.ID}}'>编辑</a>
-                {{- end}}
-              [[- end]]
-              [[- if deleteDisabled $raw.class | not -]]
-                {{- if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}
-                <form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-inline" role="form" style="display: inline;">
-                  <input type="hidden" name="_method" value="DELETE">
-                  <input type="hidden" name="id" value="{{$v.ID}}">
-                    <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">
-                      <i class="icon-search"></i> 删除
-                    </a>
-                </form>
-                {{- end}}
-              [[- end]]
-            [[- end]]
-            </td>
+        [[- range $column := .class.Fields]]
+          [[- if needDisplay $column]]
+            [[- $bt := belongsTo $raw.class $column]]
+            [[- if $bt ]]
+                [[- $refClass := class $bt.Target]]
+                [[- $referenceFields := referenceFields $column]]
+            {{- if $.[[pluralize $refClass.Name | camelizeDownFirst]]}}
+              {{- $rValue := index $.[[pluralize $refClass.Name | camelizeDownFirst]] $v.[[goify $column.Name true]]}}
+                [[- range $rField := $referenceFields ]]
+                  [[- $referenceField := field $refClass $rField.Name]]
+            <td>{{$rValue.[[goify $referenceField.Name true]]}}</td>
+                [[- end]]
+            {{- else}}
+            <td></td>
             {{- end}}
+
+            [[- else]]
+            <td [[if hasFeature $column "async" -]]
+              x-field-name="[[$column.Name]]"
+            [[- end]]>{{[[if eq $column.Type "date"]]date [[else if eq $column.Type "datetime"]]datetime [[else if eq $column.Type "time"]]time [[end]]$v.[[goify $column.Name true]]}}</td>
+            [[- end]]
+          [[- end]]
+        [[- end]]
+
+
+
+                [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not]]
+                  [[- if $raw.class.PrimaryKey]]
+            <td>
+                    [[- if editDisabled $raw.class | not]]
+                      {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]" -}}
+                    <a href='{{url "[[.controllerName]].Edit"
+                      [[- range $fieldName := $raw.class.PrimaryKey]] $v.[[goify $fieldName true]]
+                      [[- end]]}}'><nobr>编辑</nobr></a>
+                      {{- end}}
+                    [[- end]]
+                    [[- if deleteDisabled $raw.class | not]]
+                      {{if current_user_has_del_permission $raw "[[underscore .controllerName]]" -}}
+                     <form id='[[underscore .controllerName]]-delete-{{$idx}}' action="{{url "[[.controllerName]].Delete"}}" method="POST" class="form-inline" role="form" style="display: inline;">
+                      <input type="hidden" name="_method" value="DELETE">
+                      [[- range $fieldName := $raw.class.PrimaryKey]]
+                      <input type="hidden" name="[[$fieldName]]" value="{{$v.[[goify $fieldName true]]}}">
+                      [[- end -]]
+                        <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$idx}}').submit()">
+                            <i class="icon-search"></i><nobr>删除</nobr>
+                          </a>
+                      </form>
+                      {{- end}}
+                    [[- end]]
+                  [[- else]]
+                    {{- if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}
+            <td>
+                    [[- if editDisabled $raw.class | not]]
+                      {{- if current_user_has_edit_permission $raw "[[underscore .controllerName]]"}}
+                      <a href='{{url "[[.controllerName]].Edit" $v.ID}}'><nobr>编辑</nobr></a>
+                      {{- end}}
+                    [[- end]]
+
+                    [[- if deleteDisabled $raw.class | not]]
+                      {{- if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}
+                      <form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-inline" role="form" style="display: inline;">
+                        <input type="hidden" name="_method" value="DELETE">
+                        <input type="hidden" name="id" value="{{$v.ID}}">
+                          <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">
+                            <i class="icon-search"></i><nobr>删除</nobr>
+                          </a>
+                      </form>
+                      {{- end}}
+                    [[- end]]
+                    {{- end}}
+
+                  [[- end]]
+            </td>
           [[- end]]
         </tr>
-      <tbody>
       {{- end}}
+      <tbody>
     </table>
     {{template "[[if .layouts]][[.layouts]][[end]]paginator.html" .}}
-    </div>
-</div>
-
-{{template "[[if .layouts]][[.layouts]][[end]]footer.html" .}}
+{{template "[[if .layouts]][[.layouts]][[end]]footer[[.theme]].html" .}}

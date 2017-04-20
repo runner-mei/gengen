@@ -18,12 +18,14 @@ type GenerateViewCommand struct {
 	baseCommand
 	layouts    string
 	customPath string
+	viewTag    string
 }
 
 // Flags - 申明参数
 func (cmd *GenerateViewCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 	fs.StringVar(&cmd.layouts, "layouts", "", "")
 	fs.StringVar(&cmd.customPath, "customPath", "", "")
+	fs.StringVar(&cmd.viewTag, "view_tag", "", "")
 	return cmd.baseCommand.Flags(fs)
 }
 
@@ -33,10 +35,15 @@ func (cmd *GenerateViewCommand) Run(args []string) error {
 }
 
 func (cmd *GenerateViewCommand) genrateView(cls *types.ClassSpec) error {
+	viewTag := cmd.viewTag
+	if viewTag != "" {
+		viewTag = "_" + viewTag
+	}
 	ctlName := Pluralize(cls.Name)
 	params := map[string]interface{}{"namespace": cmd.ns,
 		"controllerName": ctlName,
 		"modelName":      ctlName,
+		"theme":          viewTag,
 		"layouts":        cmd.layouts,
 		"customPath":     cmd.customPath,
 		"class":          cls}
