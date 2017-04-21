@@ -41,7 +41,7 @@
       </thead>
       <tbody>
       {{- range $idx, $v := .[[camelizeDownFirst .modelName]]}}
-        <tr [[- if $raw.class.PrimaryKey | not]] x-record-key="{{$v.ID}}"[[end]]>
+        <tr [[- if $raw.class.PrimaryKey | not]] x-record-key="{{$v.ID}}" x-record-url="{{url "[[.controllerName]].IndexAsync" $v.ID}}"[[end]]>
         [[- if $raw.class.PrimaryKey | not]]
           [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not]]
             <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker"

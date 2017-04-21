@@ -75,7 +75,12 @@ func (cmd *baseCommand) loadFile(nm string) ([]byte, error) {
 }
 
 func (cmd *baseCommand) newTemplate(name string, funcs template.FuncMap) (*template.Template, error) {
-	locals := template.FuncMap{"goify": Goify,
+	locals := template.FuncMap{
+		"set": func(ctx map[string]interface{}, name string, value interface{}) string {
+			ctx[name] = value
+			return ""
+		},
+		"goify":             Goify,
 		"gotype":            GoTypename,
 		"underscore":        types.Underscore,
 		"tableize":          types.Tableize,

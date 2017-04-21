@@ -737,6 +737,19 @@ func (c [[.controllerName]]) Index() revel.Result {
   return c.Render([[camelizeDownFirst .modelName]], paginator)
 }
 
+[[set . "hasAsync" false]]
+[[- range $column := .class.Fields]]
+  [[- if hasFeature $column "async" -]]
+    [[set $ "hasAsync" true]]
+  [[- end ]]
+[[- end -]]
+[[- if .hasAsync]]
+// IndexAsync 获取异步数据
+func (c [[.controllerName]]) IndexAsync(id int64) revel.Result {
+  return c.RenderError(errors.New("Not Impemented"))
+}
+[[- end]]
+
 [[if newDisabled .class | not -]]
 // New 编辑新建记录
 func (c [[.controllerName]]) New() revel.Result {
@@ -1058,7 +1071,7 @@ var viewIndexText = `[[$raw := .]]{{$raw := .}}{{set . "title" "[[index_label .c
       </thead>
       <tbody>
       {{- range $idx, $v := .[[camelizeDownFirst .modelName]]}}
-        <tr [[- if $raw.class.PrimaryKey | not]] x-record-key="{{$v.ID}}"[[end]]>
+        <tr [[- if $raw.class.PrimaryKey | not]] x-record-key="{{$v.ID}}" x-record-url="{{url "[[.controllerName]].IndexAsync" $v.ID}}"[[end]]>
         [[- if $raw.class.PrimaryKey | not]]
           [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not]]
             <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker"
@@ -1261,6 +1274,27 @@ var viewJsText = `$(function () {
 
         return false
     });
+
+
+    $("#[[.class.Name]]Table tr").each(function() {
+        var recordURL = $(this).attr("x-record-url")
+        if(!!!recordURL) {
+            return
+        }
+        $.ajax({
+            url: recordURL,
+            success: function(record){
+                [[- range $column := .class.Fields]]
+                    [[- if hasFeature $column "async"]]
+                $("td[x-field-name=[[$column.Name -]] ]").text(record.[[$column.Name]])
+                    [[- end]]
+                [[- end]]
+            },
+            error: function(r, status, error)  {
+                console.log(recordURL, error, r.responseText)
+            },
+        });
+    })
 });
 `
 
