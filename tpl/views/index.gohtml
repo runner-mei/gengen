@@ -40,8 +40,14 @@
       </tr>
       </thead>
       <tbody>
+      [[set . "hasAsync" false]]
+      [[- range $column := .class.Fields]]
+        [[- if hasFeature $column "async" -]]
+          [[set $ "hasAsync" true]]
+        [[- end ]]
+      [[- end -]]
       {{- range $idx, $v := .[[camelizeDownFirst .modelName]]}}
-        <tr [[- if $raw.class.PrimaryKey | not]] x-record-key="{{$v.ID}}" x-record-url="{{url "[[.controllerName]].IndexAsync" $v.ID}}"[[end]]>
+        <tr [[- if $raw.class.PrimaryKey | not]] x-record-key="{{$v.ID}}" [[- if .hasAsync]]x-record-url="{{url "[[.controllerName]].IndexAsync" $v.ID}}"[[end]][[end]]>
         [[- if $raw.class.PrimaryKey | not]]
           [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not]]
             <td><input type="checkbox" class="[[underscore .controllerName]]-row-checker"
@@ -87,54 +93,56 @@
 
 
 
-                [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not]]
-                  [[- if $raw.class.PrimaryKey]]
-            <td>
-                    [[- if editDisabled $raw.class | not]]
-                      {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]" -}}
-                    <a href='{{url "[[.controllerName]].Edit"
+        [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not]]
+        {{- if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}
+        <td>
+            [[- if $raw.class.PrimaryKey]]
+
+              [[- if editDisabled $raw.class | not]]
+          {{if current_user_has_edit_permission $raw "[[underscore .controllerName]]" -}}
+            <a href='{{url "[[.controllerName]].Edit"
                       [[- range $fieldName := $raw.class.PrimaryKey]] $v.[[goify $fieldName true]]
                       [[- end]]}}'><nobr>编辑</nobr></a>
-                      {{- end}}
-                    [[- end]]
-                    [[- if deleteDisabled $raw.class | not]]
-                      {{if current_user_has_del_permission $raw "[[underscore .controllerName]]" -}}
-                     <form id='[[underscore .controllerName]]-delete-{{$idx}}' action="{{url "[[.controllerName]].Delete"}}" method="POST" class="form-inline" role="form" style="display: inline;">
-                      <input type="hidden" name="_method" value="DELETE">
-                      [[- range $fieldName := $raw.class.PrimaryKey]]
-                      <input type="hidden" name="[[$fieldName]]" value="{{$v.[[goify $fieldName true]]}}">
-                      [[- end -]]
-                        <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$idx}}').submit()">
-                            <i class="icon-search"></i><nobr>删除</nobr>
-                          </a>
-                      </form>
-                      {{- end}}
-                    [[- end]]
-                  [[- else]]
-                    {{- if current_user_has_write_permission $raw "[[underscore .controllerName]]"}}
-            <td>
-                    [[- if editDisabled $raw.class | not]]
-                      {{- if current_user_has_edit_permission $raw "[[underscore .controllerName]]"}}
-                      <a href='{{url "[[.controllerName]].Edit" $v.ID}}'><nobr>编辑</nobr></a>
-                      {{- end}}
-                    [[- end]]
+          {{- end}}
+              [[- end]]
+              [[- if deleteDisabled $raw.class | not]]
+          {{if current_user_has_del_permission $raw "[[underscore .controllerName]]" -}}
+            <form id='[[underscore .controllerName]]-delete-{{$idx}}' action="{{url "[[.controllerName]].Delete"}}" method="POST" class="form-inline" role="form" style="display: inline;">
+            <input type="hidden" name="_method" value="DELETE">
+            [[- range $fieldName := $raw.class.PrimaryKey]]
+            <input type="hidden" name="[[$fieldName]]" value="{{$v.[[goify $fieldName true]]}}">
+            [[- end -]]
+              <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$idx}}').submit()">
+                  <i class="icon-search"></i><nobr>删除</nobr>
+                </a>
+            </form>
+          {{- end}}
+              [[- end]]
 
-                    [[- if deleteDisabled $raw.class | not]]
-                      {{- if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}
-                      <form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-inline" role="form" style="display: inline;">
-                        <input type="hidden" name="_method" value="DELETE">
-                        <input type="hidden" name="id" value="{{$v.ID}}">
-                          <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">
-                            <i class="icon-search"></i><nobr>删除</nobr>
-                          </a>
-                      </form>
-                      {{- end}}
-                    [[- end]]
-                    {{- end}}
+            [[- else]]
 
-                  [[- end]]
-            </td>
-          [[- end]]
+              [[- if editDisabled $raw.class | not]]
+          {{- if current_user_has_edit_permission $raw "[[underscore .controllerName]]"}}
+          <a href='{{url "[[.controllerName]].Edit" $v.ID}}'><nobr>编辑</nobr></a>
+          {{- end}}
+              [[- end]]
+
+              [[- if deleteDisabled $raw.class | not]]
+          {{- if current_user_has_del_permission $raw "[[underscore .controllerName]]"}}
+            <form id='[[underscore .controllerName]]-delete-{{$v.ID}}' action="{{url "[[.controllerName]].Delete" $v.ID}}" method="POST" class="form-inline" role="form" style="display: inline;">
+              <input type="hidden" name="_method" value="DELETE">
+              <input type="hidden" name="id" value="{{$v.ID}}">
+              <a href="javascript:document.getElementById('[[underscore .controllerName]]-delete-{{$v.ID}}').submit()">
+                <i class="icon-search"></i><nobr>删除</nobr>
+              </a>
+            </form>
+          {{- end}}
+              [[- end]]
+
+            [[- end]]
+          </td>
+          {{- end}}
+        [[- end]]
         </tr>
       {{- end}}
       <tbody>
