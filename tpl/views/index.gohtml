@@ -67,6 +67,8 @@
           [[- end]]
         [[- end]]
 
+
+
         [[- range $column := .class.Fields]]
           [[- if needDisplay $column]]
             [[- $bt := belongsTo $raw.class $column]]
@@ -86,7 +88,19 @@
             [[- else]]
             <td [[if hasFeature $column "async" -]]
               x-field-name="[[$column.Name]]"
-            [[- end]]>{{[[if eq $column.Type "date"]]date [[else if eq $column.Type "datetime"]]datetime [[else if eq $column.Type "time"]]time [[end]]$v.[[goify $column.Name true]]}}</td>
+            [[- end]]>{{[[if eq $column.Type "date" -]]
+              date 
+              [[- else if eq $column.Type "datetime" -]]
+              datetime 
+              [[- else if eq $column.Type "time" -]]
+              time 
+              [[- else if $column.Format -]]
+                  [[toFormat $column]]
+              [[- else if valueInAnnotations $column "enumerationSource" -]]
+                  [[toFormat $column]]
+              [[- else if hasEnumerations $column -]]
+                  [[toFormat $column]]
+              [[- end]] $v.[[goify $column.Name true]]}}</td>
             [[- end]]
           [[- end]]
         [[- end]]

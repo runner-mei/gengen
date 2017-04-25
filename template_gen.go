@@ -666,9 +666,54 @@ import (
 
   "github.com/revel/revel"
   "github.com/three-plus-three/forms"
+  "github.com/three-plus-three/modules/toolbox"
   "github.com/runner-mei/orm"
   "upper.io/db.v3"
 )
+
+[[set . "hasEnumerations" false]]
+[[- range $field := .class.Fields]]
+  [[- if valueInAnnotations $field "enumerationSource" -]]
+  [[- else if hasEnumerations $field -]]
+    [[- set $ "hasEnumerations" true]]
+  [[- end ]]
+[[- end -]]
+func init() {
+[[- if .hasEnumerations]]
+    [[- range $field := .class.Fields]]
+      [[- if valueInAnnotations $field "enumerationSource" -]]
+      [[- else if hasEnumerations $field -]]
+  revel.TemplateFuncs["[[$field.Name]]_format"] = func(value [[gotype $field.Type]]) string {
+    switch value {
+      [[- range $eValue := $field.Restrictions.Enumerations]]
+        [[- if eq $field.Type "byte"]]
+    case '[[$eValue.Value]]':
+      return "[[if $eValue.Label]][[$eValue.Label]][[else]][[$eValue.Value]][[end]]"
+        [[- else if eq $field.Type "integer" "number" "biginteger" "int" "int64" "uint" "uint64" "float" "float64"]]
+    case [[$eValue.Value]]:
+      return "[[if $eValue.Label]][[$eValue.Label]][[else]][[$eValue.Value]][[end]]"
+        [[- else]]
+    case "[[$eValue.Value]]":
+      return "[[if $eValue.Label]][[$eValue.Label]][[else]][[$eValue.Value]][[end]]"
+        [[- end]]
+      [[- end]]
+    default:
+      [[- if eq $field.Type "byte"]]
+      return string(value)
+      [[- else if eq $field.Type "string"]]
+      return value
+      [[- else if gotype $field.Type | eq "string"]]
+      return value
+      [[- else]]
+      return fmt.Sprint(value)
+      [[- end]]
+    }
+  }
+      [[- end]]
+    [[- end]]
+[[- end]]
+}
+
 
 // [[.controllerName]] - 控制器
 type [[.controllerName]] struct {
@@ -678,7 +723,9 @@ type [[.controllerName]] struct {
 // Index 列出所有记录
 func (c [[.controllerName]]) Index() revel.Result {
   var cond orm.Cond
-  if name := c.Params.Get("query"); name != "" {
+  var name string
+  c.Params.Bind(&name, "query")
+  if name != "" {
     cond = orm.Cond{"name LIKE": "%" + name + "%"}
   }
 
@@ -692,7 +739,7 @@ func (c [[.controllerName]]) Index() revel.Result {
   c.Params.Bind(&pageIndex, "pageIndex")
   c.Params.Bind(&pageSize, "pageSize")
   if pageSize <= 0 {
-    pageSize = libs.DEFAULT_SIZE_PER_PAGE
+    pageSize = toolbox.DEFAULT_SIZE_PER_PAGE
   }
 
   var [[camelizeDownFirst .modelName]] []models.[[.class.Name]]
@@ -733,7 +780,7 @@ func (c [[.controllerName]]) Index() revel.Result {
   }
   [[- end]]
 
-  paginator := libs.NewPaginator(c.Request.Request, pageSize, total)
+  paginator := toolbox.NewPaginator(c.Request.Request, pageSize, total)
   return c.Render([[camelizeDownFirst .modelName]], paginator)
 }
 
@@ -1097,6 +1144,8 @@ var viewIndexText = `[[$raw := .]]{{$raw := .}}{{set . "title" "[[index_label .c
           [[- end]]
         [[- end]]
 
+
+
         [[- range $column := .class.Fields]]
           [[- if needDisplay $column]]
             [[- $bt := belongsTo $raw.class $column]]
@@ -1116,7 +1165,19 @@ var viewIndexText = `[[$raw := .]]{{$raw := .}}{{set . "title" "[[index_label .c
             [[- else]]
             <td [[if hasFeature $column "async" -]]
               x-field-name="[[$column.Name]]"
-            [[- end]]>{{[[if eq $column.Type "date"]]date [[else if eq $column.Type "datetime"]]datetime [[else if eq $column.Type "time"]]time [[end]]$v.[[goify $column.Name true]]}}</td>
+            [[- end]]>{{[[if eq $column.Type "date" -]]
+              date 
+              [[- else if eq $column.Type "datetime" -]]
+              datetime 
+              [[- else if eq $column.Type "time" -]]
+              time 
+              [[- else if $column.Format -]]
+                  [[toFormat $column]]
+              [[- else if valueInAnnotations $column "enumerationSource" -]]
+                  [[toFormat $column]]
+              [[- else if hasEnumerations $column -]]
+                  [[toFormat $column]]
+              [[- end]] $v.[[goify $column.Name true]]}}</td>
             [[- end]]
           [[- end]]
         [[- end]]
@@ -1220,7 +1281,7 @@ var viewQuickText = `    <div class="quick-actions btn-group m-b">
         {{- end}}
         [[- end]][[- end]]
         [[- if fieldExists .class "name"]]
-        <form action="{{url "[[.controllerName]].Index" 0 0}}" method="POST" id='[[underscore .controllerName]]-quick-form' class="form-inline"  style="display: inline;">
+        <form action="{{url "[[.controllerName]].Index"}}" method="POST" id='[[underscore .controllerName]]-quick-form' class="form-inline"  style="display: inline;">
             <input type="text" name="query">
             <a href="javascript:document.getElementById('[[underscore .controllerName]]-quick-form').submit()" >
                 <i class="fa fa-search"></i> 查询

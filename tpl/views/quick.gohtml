@@ -21,7 +21,7 @@
         {{- end}}
         [[- end]][[- end]]
         [[- if fieldExists .class "name"]]
-        <form action="{{url "[[.controllerName]].Index" 0 0}}" method="POST" id='[[underscore .controllerName]]-quick-form' class="form-inline"  style="display: inline;">
+        <form action="{{url "[[.controllerName]].Index"}}" method="POST" id='[[underscore .controllerName]]-quick-form' class="form-inline"  style="display: inline;">
             <input type="text" name="query">
             <a href="javascript:document.getElementById('[[underscore .controllerName]]-quick-form').submit()" >
                 <i class="fa fa-search"></i> 查询

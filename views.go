@@ -107,12 +107,6 @@ func (cmd *GenerateViewCommand) genrateView(cls *types.ClassSpec) error {
 			}
 			return string(bs)
 		},
-		"hasEnumerations": func(f types.FieldSpec) bool {
-			if f.Restrictions == nil {
-				return false
-			}
-			return len(f.Restrictions.Enumerations) > 0
-		},
 		"belongsToClassName": func(cls *types.ClassSpec, f types.FieldSpec) string {
 			for _, belongsTo := range cls.BelongsTo {
 				if belongsTo.Name == f.Name {

@@ -87,6 +87,7 @@ func (cmd *baseCommand) newTemplate(name string, funcs template.FuncMap) (*templ
 		"singularize":       types.Singularize,
 		"pluralize":         types.Pluralize,
 		"camelizeDownFirst": types.CamelizeDownFirst,
+		"toFormat":          toFormatFunc,
 		"omitempty": func(t *types.FieldSpec) bool {
 			return !t.IsRequired
 		},
@@ -132,6 +133,12 @@ func (cmd *baseCommand) newTemplate(name string, funcs template.FuncMap) (*templ
 				}
 			}
 			panic(errors.New("field '" + fieldName + "' isn't exists in the " + cls.Name))
+		},
+		"hasEnumerations": func(f types.FieldSpec) bool {
+			if f.Restrictions == nil {
+				return false
+			}
+			return len(f.Restrictions.Enumerations) > 0
 		},
 		"isBelongsTo": func(cls *types.ClassSpec, f types.FieldSpec) bool {
 			for _, belongsTo := range cls.BelongsTo {
@@ -333,6 +340,10 @@ func (cmd *baseCommand) executeTempate(override bool, names []string, funcs temp
 		out, err = os.OpenFile(fname, os.O_CREATE|os.O_TRUNC, 0666)
 	}
 	if nil != err {
+		if os.IsExist(err) {
+			fmt.Println("[WARN] [EXISTS] skip", fname)
+			return nil
+		}
 		return err
 	}
 	defer out.Close()
@@ -406,4 +417,28 @@ func ReferenceFields(f types.FieldSpec) []ReferenceField {
 	}
 
 	return names
+}
+
+func toFormatFunc(f types.FieldSpec) string {
+	if f.Annotations != nil {
+		if format := f.Annotations["columnFormat"]; format != nil {
+			return fmt.Sprint(format)
+		}
+
+		if format := f.Annotations["enumerationSource"]; format != nil {
+			return fmt.Sprint(format) + "_format"
+		}
+	}
+
+	if f.Restrictions != nil && len(f.Restrictions.Enumerations) > 0 {
+		return f.Name + "_format"
+	}
+	switch f.Format {
+	case "net.IP", "ip", "mac", "email":
+		return ""
+	case "":
+		return ""
+	default:
+		return f.Format
+	}
 }
