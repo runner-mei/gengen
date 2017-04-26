@@ -812,6 +812,12 @@ func (c [[.controllerName]]) New() revel.Result {
   } else {
     [[$field := field $class $belongsTo.Name -]]
     var opt[[$targetName]] = make([]forms.InputChoice, 0, len([[$varName]]))
+    [[- if not $field.IsRequired]]
+      opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
+        Value: "",
+        Label: revel.Message(c.Request.Locale, "select.empty"),
+      })
+    [[- end]]
     for _, o := range [[$varName]] {
       opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
         Value: strconv.FormatInt(int64(o.ID),10),
@@ -877,6 +883,12 @@ func (c [[.controllerName]]) Edit(id int64) revel.Result {
   } else {
     [[$field := field $class $belongsTo.Name -]]
     var opt[[$targetName]] = make([]forms.InputChoice, 0, len([[$varName]]))
+    [[- if not $field.IsRequired]]
+      opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
+        Value: "",
+        Label: revel.Message(c.Request.Locale, "select.empty"),
+      })
+    [[- end]]
     for _, o := range [[$varName]] {
       opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
         Value: strconv.FormatInt(int64(o.ID),10),
@@ -951,7 +963,7 @@ func (c [[.controllerName]]) Delete([[- range $idx, $fieldName := .class.Primary
       return c.Redirect(routes.[[$.controllerName]].Index())
     }
   [[- end]]
-  cond["[[$field.Name]] ="] = [[$fieldName]]
+  cond["[[$field.Name]]"] = [[$fieldName]]
 [[- end]]
 
   rowsEffected, err :=  c.Lifecycle.DB.[[.modelName]]().Where(cond).Delete()
