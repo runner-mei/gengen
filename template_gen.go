@@ -755,24 +755,45 @@ func (c [[.controllerName]]) Index() revel.Result {
 
   [[if .class.BelongsTo -]]
   if len([[camelizeDownFirst .modelName]]) > 0 {
-    [[range $belongsTo := .class.BelongsTo -]]
+    [[- range $idx, $belongsTo := .class.BelongsTo -]]
     [[- $targetName := pluralize $belongsTo.Target -]]
-    [[- $varName := camelizeDownFirst $targetName]]
+    [[- $varName := camelizeDownFirst $belongsTo.Target]]
+
+[[- set $ "targetIsExists" false]]
+[[- range $sidx, $b := $.class.BelongsTo]]
+  [[- if eq $belongsTo.Target $belongsTo.Target -]]
+  [[- if lt $sidx $idx -]]
+    [[- set $ "targetIsExists" true]]
+  [[- end ]]
+  [[- end ]]
+[[- end -]]
+
+  [[- if not $.targetIsExists ]]
     var [[camelizeDownFirst $belongsTo.Target]]IDList = make([]int64, 0, len([[camelizeDownFirst $modelName]]))
+  [[- else]]
+    [[camelizeDownFirst $belongsTo.Target]]IDList = [[camelizeDownFirst $belongsTo.Target]]IDList[:0]
+  [[- end]]
     for idx := range [[camelizeDownFirst $modelName]] {
       [[camelizeDownFirst $belongsTo.Target]]IDList = append([[camelizeDownFirst $belongsTo.Target]]IDList, [[camelizeDownFirst $modelName]][idx].[[$belongsTo.AttributeName false]])
     }
 
-    var [[$varName]] []models.[[$belongsTo.Target]]
+  [[- if not $.targetIsExists ]]
+    var [[$varName]]ByID map[int64]models.[[$belongsTo.Target]]
+    var [[$varName]]List []models.[[$belongsTo.Target]]
+  [[- else]]
+    [[$varName]]List = nil
+  [[- end]]
     err = c.Lifecycle.DB.[[$targetName]]().Where().
       And(orm.Cond{"id IN": [[camelizeDownFirst $belongsTo.Target]]IDList}).
-      All(&[[$varName]])
+      All(&[[$varName]]List)
     if err != nil {
       c.Validation.Error("load [[$belongsTo.Target]] fail, " + err.Error())
     } else {
-      var [[$varName]]ByID = make(map[int64]models.[[$belongsTo.Target]], len([[$varName]]))
-      for idx := range [[$varName]] {
-        [[$varName]]ByID[ [[$varName]][idx].ID ] = [[$varName]][idx]
+      if [[$varName]]ByID == nil {
+        [[$varName]]ByID = make(map[int64]models.[[$belongsTo.Target]], len([[$varName]]List))
+      }
+      for idx := range [[$varName]]List {
+        [[$varName]]ByID[ [[$varName]]List[idx].ID ] = [[$varName]]List[idx]
       }
       c.ViewArgs["[[$varName]]ByID"] = [[$varName]]ByID
     }
@@ -802,13 +823,27 @@ func (c [[.controllerName]]) IndexAsync(id int64) revel.Result {
 func (c [[.controllerName]]) New() revel.Result {
   [[if .class.BelongsTo -]]
   var err error
-  [[range $belongsTo := .class.BelongsTo ]]  
+  [[range $idx, $belongsTo := .class.BelongsTo ]]
+      [[- set $ "targetIsExists" false]]
+      [[- range $sidx, $b := $.class.BelongsTo]]
+        [[- if eq $belongsTo.Target $belongsTo.Target -]]
+        [[- if lt $sidx $idx -]]
+          [[- set $ "targetIsExists" true]]
+        [[- end ]]
+        [[- end ]]
+      [[- end -]]
+
+  [[- if not $.targetIsExists ]]
+
   [[$targetName := pluralize $belongsTo.Target]][[$varName := camelizeDownFirst $targetName]]var [[$varName]] []models.[[$belongsTo.Target]]
   err = c.Lifecycle.DB.[[$targetName]]().Where().
     All(&[[$varName]])
   if err != nil {
     c.Validation.Error("load [[$belongsTo.Target]] fail, " + err.Error())
-    c.ViewArgs["[[$varName]]"] = []forms.InputChoice{}
+    c.ViewArgs["[[$varName]]"] = []forms.InputChoice{{
+      Value: "",
+      Label: revel.Message(c.Request.Locale, "select.empty"),
+    }}
   } else {
     [[$field := field $class $belongsTo.Name -]]
     var opt[[$targetName]] = make([]forms.InputChoice, 0, len([[$varName]]))
@@ -826,6 +861,7 @@ func (c [[.controllerName]]) New() revel.Result {
     }
     c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
   }
+    [[- end]][[/* if not $.targetIsExists */]]
   [[- end]]
   [[- end]]
   return c.Render()
@@ -872,14 +908,28 @@ func (c [[.controllerName]]) Edit(id int64) revel.Result {
     return c.Redirect(routes.[[.controllerName]].Index())
   }
 
-  [[if .class.BelongsTo -]]
-  [[range $belongsTo := .class.BelongsTo ]]  
+  [[if .class.BelongsTo]]
+  [[- range $idx, $belongsTo := .class.BelongsTo ]]
+      [[- set $ "targetIsExists" false]]
+      [[- range $sidx, $b := $.class.BelongsTo]]
+        [[- if eq $belongsTo.Target $belongsTo.Target -]]
+        [[- if lt $sidx $idx -]]
+          [[- set $ "targetIsExists" true]]
+        [[- end ]]
+        [[- end ]]
+      [[- end -]]
+
+  [[- if not $.targetIsExists ]]
+
   [[$targetName := pluralize $belongsTo.Target]][[$varName := camelizeDownFirst $targetName]]var [[$varName]] []models.[[$belongsTo.Target]]
   err = c.Lifecycle.DB.[[$targetName]]().Where().
     All(&[[$varName]])
   if err != nil {
     c.Validation.Error("load [[$belongsTo.Target]] fail, " + err.Error())
-    c.ViewArgs["[[$varName]]"] = []forms.InputChoice{}
+    c.ViewArgs["[[$varName]]"] = []forms.InputChoice{{
+      Value: "",
+      Label: revel.Message(c.Request.Locale, "select.empty"),
+    }}
   } else {
     [[$field := field $class $belongsTo.Name -]]
     var opt[[$targetName]] = make([]forms.InputChoice, 0, len([[$varName]]))
@@ -897,6 +947,7 @@ func (c [[.controllerName]]) Edit(id int64) revel.Result {
     }
     c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
   }
+    [[- end]][[/* if not $.targetIsExists */]]
   [[- end]]
   [[- end]]
 
@@ -1165,7 +1216,7 @@ var viewIndexText = `[[$raw := .]]{{$raw := .}}{{set . "title" "[[index_label .c
                 [[- $refClass := class $bt.Target]]
                 [[- $referenceFields := referenceFields $column -]]
             {{- if $.[[pluralize $refClass.Name | camelizeDownFirst]]}}
-              {{- $rValue := index $.[[pluralize $refClass.Name | camelizeDownFirst]]ByID $v.[[goify $column.Name true]]}}
+              {{- $rValue := index $.[[camelizeDownFirst $refClass.Name]]ByID $v.[[goify $column.Name true]]}}
                 [[- range $rField := $referenceFields ]]
                   [[- $referenceField := field $refClass $rField.Name]]
               <td>

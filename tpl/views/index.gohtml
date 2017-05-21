@@ -76,7 +76,7 @@
                 [[- $refClass := class $bt.Target]]
                 [[- $referenceFields := referenceFields $column -]]
             {{- if $.[[pluralize $refClass.Name | camelizeDownFirst]]}}
-              {{- $rValue := index $.[[pluralize $refClass.Name | camelizeDownFirst]]ByID $v.[[goify $column.Name true]]}}
+              {{- $rValue := index $.[[camelizeDownFirst $refClass.Name]]ByID $v.[[goify $column.Name true]]}}
                 [[- range $rField := $referenceFields ]]
                   [[- $referenceField := field $refClass $rField.Name]]
               <td>
