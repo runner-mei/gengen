@@ -34,8 +34,10 @@ func InitTables(engine *xorm.Engine) error {
     }
 
     if err := engine.CreateUniques(bean); err != nil {
-      if !strings.Contains(err.Error(), "already exists") &&
-        !strings.Contains(err.Error(), "create unique index") {
+      if !(strings.Contains(err.Error(), "already exists") ||
+        strings.Contains(err.Error(), "已经存在")) &&
+        !(strings.Contains(err.Error(), "create unique index") ||
+          strings.Contains(err.Error(), "UQE_")) {
         return err
       }
       revel.WARN.Println(err)

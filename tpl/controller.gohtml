@@ -115,7 +115,7 @@ func (c [[.controllerName]]) Index() revel.Result {
       for idx := range [[$varName]] {
         [[$varName]]ByID[ [[$varName]][idx].ID ] = [[$varName]][idx]
       }
-      c.ViewArgs["[[$varName]]"] = [[$varName]]ByID
+      c.ViewArgs["[[$varName]]ByID"] = [[$varName]]ByID
     }
     [[- end]]
   }

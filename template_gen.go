@@ -774,7 +774,7 @@ func (c [[.controllerName]]) Index() revel.Result {
       for idx := range [[$varName]] {
         [[$varName]]ByID[ [[$varName]][idx].ID ] = [[$varName]][idx]
       }
-      c.ViewArgs["[[$varName]]"] = [[$varName]]ByID
+      c.ViewArgs["[[$varName]]ByID"] = [[$varName]]ByID
     }
     [[- end]]
   }
@@ -1161,23 +1161,24 @@ var viewIndexText = `[[$raw := .]]{{$raw := .}}{{set . "title" "[[index_label .c
         [[- range $column := .class.Fields]]
           [[- if needDisplay $column]]
             [[- $bt := belongsTo $raw.class $column]]
-            [[- if $bt ]]
+            [[- if $bt]]
                 [[- $refClass := class $bt.Target]]
-                [[- $referenceFields := referenceFields $column]]
+                [[- $referenceFields := referenceFields $column -]]
             {{- if $.[[pluralize $refClass.Name | camelizeDownFirst]]}}
-              {{- $rValue := index $.[[pluralize $refClass.Name | camelizeDownFirst]] $v.[[goify $column.Name true]]}}
+              {{- $rValue := index $.[[pluralize $refClass.Name | camelizeDownFirst]]ByID $v.[[goify $column.Name true]]}}
                 [[- range $rField := $referenceFields ]]
                   [[- $referenceField := field $refClass $rField.Name]]
-            <td>{{$rValue.[[goify $referenceField.Name true]]}}</td>
-                [[- end]]
-            {{- else}}
-            <td></td>
+              <td>
+              {{- if $rValue}}
+                {{- $rValue.[[goify $referenceField.Name true]]}}
+              {{- end -}}
+              </td>
+                [[- end -]]
             {{- end}}
 
             [[- else]]
-            <td [[if hasFeature $column "async" -]]
-              x-field-name="[[$column.Name]]"
-            [[- end]]>{{[[if eq $column.Type "date" -]]
+            <td [[if hasFeature $column "async" -]] x-field-name="[[$column.Name]]" [[- end]]>
+              {{- [[if eq $column.Type "date" -]]
               date 
               [[- else if eq $column.Type "datetime" -]]
               datetime 
@@ -1190,8 +1191,8 @@ var viewIndexText = `[[$raw := .]]{{$raw := .}}{{set . "title" "[[index_label .c
               [[- else if hasEnumerations $column -]]
                   [[toFormat $column]]
               [[- end]] $v.[[goify $column.Name true]]}}</td>
-            [[- end]]
-          [[- end]]
+            [[- end]][[/* if $bt */]]
+          [[- end]][[/* if needDisplay $column */]]
         [[- end]]
 
 
@@ -1735,8 +1736,10 @@ func InitTables(engine *xorm.Engine) error {
     }
 
     if err := engine.CreateUniques(bean); err != nil {
-      if !strings.Contains(err.Error(), "already exists") &&
-        !strings.Contains(err.Error(), "create unique index") {
+      if !(strings.Contains(err.Error(), "already exists") ||
+        strings.Contains(err.Error(), "已经存在")) &&
+        !(strings.Contains(err.Error(), "create unique index") ||
+          strings.Contains(err.Error(), "UQE_")) {
         return err
       }
       revel.WARN.Println(err)
