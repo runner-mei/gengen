@@ -133,6 +133,8 @@ func (cmd *baseCommand) newTemplate(name string, funcs template.FuncMap) (*templ
 				}
 			}
 			log.Fatalln(errors.New("field '" + fieldName + "' isn't exists in the " + cls.Name))
+			os.Exit(-1)
+			return types.FieldSpec{}
 		},
 		"hasEnumerations": func(f types.FieldSpec) bool {
 			if f.Restrictions == nil {

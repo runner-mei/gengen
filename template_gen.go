@@ -761,7 +761,7 @@ func (c [[.controllerName]]) Index() revel.Result {
 
 [[- set $ "targetIsExists" false]]
 [[- range $sidx, $b := $.class.BelongsTo]]
-  [[- if eq $belongsTo.Target $belongsTo.Target -]]
+  [[- if eq $belongsTo.Target $b.Target -]]
   [[- if lt $sidx $idx -]]
     [[- set $ "targetIsExists" true]]
   [[- end ]]
@@ -826,7 +826,7 @@ func (c [[.controllerName]]) New() revel.Result {
   [[range $idx, $belongsTo := .class.BelongsTo ]]
       [[- set $ "targetIsExists" false]]
       [[- range $sidx, $b := $.class.BelongsTo]]
-        [[- if eq $belongsTo.Target $belongsTo.Target -]]
+        [[- if eq $belongsTo.Target $b.Target -]]
         [[- if lt $sidx $idx -]]
           [[- set $ "targetIsExists" true]]
         [[- end ]]
@@ -912,7 +912,7 @@ func (c [[.controllerName]]) Edit(id int64) revel.Result {
   [[- range $idx, $belongsTo := .class.BelongsTo ]]
       [[- set $ "targetIsExists" false]]
       [[- range $sidx, $b := $.class.BelongsTo]]
-        [[- if eq $belongsTo.Target $belongsTo.Target -]]
+        [[- if eq $belongsTo.Target $b.Target -]]
         [[- if lt $sidx $idx -]]
           [[- set $ "targetIsExists" true]]
         [[- end ]]
@@ -1214,8 +1214,8 @@ var viewIndexText = `[[$raw := .]]{{$raw := .}}{{set . "title" "[[index_label .c
             [[- $bt := belongsTo $raw.class $column]]
             [[- if $bt]]
                 [[- $refClass := class $bt.Target]]
-                [[- $referenceFields := referenceFields $column -]]
-            {{- if $.[[pluralize $refClass.Name | camelizeDownFirst]]}}
+                [[- $referenceFields := referenceFields $column]]
+            {{- if $.[[camelizeDownFirst $refClass.Name]]ByID }}
               {{- $rValue := index $.[[camelizeDownFirst $refClass.Name]]ByID $v.[[goify $column.Name true]]}}
                 [[- range $rField := $referenceFields ]]
                   [[- $referenceField := field $refClass $rField.Name]]
@@ -1224,7 +1224,11 @@ var viewIndexText = `[[$raw := .]]{{$raw := .}}{{set . "title" "[[index_label .c
                 {{- $rValue.[[goify $referenceField.Name true]]}}
               {{- end -}}
               </td>
-                [[- end -]]
+                [[- end]]
+            {{- else}}
+              [[- range $rField := $referenceFields ]]
+                <td></td>
+              [[- end]]
             {{- end}}
 
             [[- else]]
