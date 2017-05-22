@@ -74,8 +74,8 @@
             [[- $bt := belongsTo $raw.class $column]]
             [[- if $bt]]
                 [[- $refClass := class $bt.Target]]
-                [[- $referenceFields := referenceFields $column -]]
-            {{- if $.[[pluralize $refClass.Name | camelizeDownFirst]]}}
+                [[- $referenceFields := referenceFields $column]]
+            {{- if $.[[camelizeDownFirst $refClass.Name]]ByID }}
               {{- $rValue := index $.[[camelizeDownFirst $refClass.Name]]ByID $v.[[goify $column.Name true]]}}
                 [[- range $rField := $referenceFields ]]
                   [[- $referenceField := field $refClass $rField.Name]]
@@ -84,7 +84,11 @@
                 {{- $rValue.[[goify $referenceField.Name true]]}}
               {{- end -}}
               </td>
-                [[- end -]]
+                [[- end]]
+            {{- else}}
+              [[- range $rField := $referenceFields ]]
+                <td></td>
+              [[- end -]]
             {{- end}}
 
             [[- else]]
