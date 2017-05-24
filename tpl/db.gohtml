@@ -16,6 +16,14 @@ func (db *DB) [[pluralize $class.Name]]() *orm.Collection {
 }
 [[- end]]
 
+func DropTables(engine *xorm.Engine) error {
+  beans := []interface{}{[[range $class := .classes]]
+    &[[$class.Name]]{},[[end]]
+  }
+
+  return engine.DropTables(beans...)
+}
+
 func InitTables(engine *xorm.Engine) error {
   beans := []interface{}{[[range $class := .classes]]
     &[[$class.Name]]{},[[end]]
