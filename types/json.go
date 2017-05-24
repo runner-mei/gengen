@@ -159,4 +159,6 @@ var ToGoTypes = map[string]string{"boolean": "bool",
 	"biginteger":      "int64",
 	"bigInteger":      "int64",
 	"map":             "map[string]interface{}",
+	"attributeMap":    "map[string]interface{}",
+	"date":            "time.Time",
 	"dynamic":         ""}

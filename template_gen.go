@@ -1227,7 +1227,7 @@ var viewIndexText = `[[$raw := .]]{{$raw := .}}{{set . "title" "[[index_label .c
                 [[- end]]
             {{- else}}
               [[- range $rField := $referenceFields ]]
-                <td></td>
+              <td></td>
               [[- end]]
             {{- end}}
 
