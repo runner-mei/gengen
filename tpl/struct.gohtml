@@ -37,7 +37,8 @@ func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) Validate(validation *r
   [[- if ne $column.Name "id"]]
     [[- if $column.IsRequired]]
       validation.Required([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
-    [[- else if eq $column.Format "email"]]
+    [[- end]]
+    [[- if eq $column.Format "email"]]
       [[- if not $column.IsRequired]]
         if "" != [[$var]].[[goify $column.Name true]] {
           validation.Email([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
@@ -45,7 +46,8 @@ func ([[camelizeDownFirst .class.Name]] *[[.class.Name]]) Validate(validation *r
       [[- else]]
         validation.Email([[$var]].[[goify $column.Name true]]).Key("[[$var]].[[goify $column.Name true]]")
       [[- end]]
-    [[- else if $column.Restrictions]]
+    [[- end]]
+    [[- if $column.Restrictions]]
       [[- if $column.Restrictions.MinLength]]
            validation.MinSize([[$var]].[[goify $column.Name true]], [[$column.Restrictions.MinLength]]).Key("[[$var]].[[goify $column.Name true]]")
       [[- end]]
