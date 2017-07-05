@@ -1,8 +1,7 @@
-{{set . "title" "[[new_label .class]]"}}
-{{append . "moreStyles" "/public/css/form.css"}}
-{{append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
-{{template "[[if .layouts]][[.layouts]][[end]]header[[.theme]].html" .}}
-        <form action="{{url "[[.controllerName]].Create" }}" method="POST" class="form-horizontal" id="form-[[underscore .controllerName]]-new">
+{{- set . "title" "[[new_label .class]]"}}
+{{- append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
+{{- template "[[if .layouts]][[.layouts]][[end]]header[[.theme]].html" .}}
+    <form action="{{url "[[.controllerName]].Create" }}" method="POST" class="form-horizontal" id="form-[[underscore .controllerName]]-new">
         {{- $inEditMode := .inEditMode}}{{ set . "inEditMode" true}}
         {{template "[[.controllerName]]/edit_fields.html" .}}
         {{- set . "inEditMode" $inEditMode}}
@@ -12,5 +11,5 @@
                 <a href="{{url "[[.controllerName]].Index" }}" class="btn btn-info controls">取消</a>
             </div>
         </div>
-        </form>
-{{template "[[if .layouts]][[.layouts]][[end]]footer[[.theme]].html" .}}
+    </form>
+{{- template "[[if .layouts]][[.layouts]][[end]]footer[[.theme]].html" .}}

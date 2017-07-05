@@ -1,12 +1,12 @@
-[[$raw := .]]{{$raw := .}}{{set . "title" "[[index_label .class]]"}}
-{{if eq .RunMode "dev"}}
-{{append . "moreScripts" "/public/js/plugins/bootbox/bootbox.js"}}
-{{else}}
-{{append . "moreScripts" "/public/js/plugins/bootbox/bootbox.min.js"}}
-{{end}}
-{{append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
-{{template "[[if .layouts]][[.layouts]][[end]]header[[.theme]].html" .}}
-    {{template "[[.controllerName]]/quick-bar.html" .}}
+[[- $raw := .]]{{$raw := .}}{{set . "title" "[[index_label .class]]"}}
+{{- if eq .RunMode "dev"}}
+{{- append . "moreScripts" "/public/js/plugins/bootbox/bootbox.js"}}
+{{- else}}
+{{- append . "moreScripts" "/public/js/plugins/bootbox/bootbox.min.js"}}
+{{- end}}
+{{- append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
+{{- template "[[if .layouts]][[.layouts]][[end]]header[[.theme]].html" .}}
+    {{- template "[[.controllerName]]/quick-bar.html" .}}
     <table id="[[.class.Name]]Table" class="table table-bordered table-striped table-highlight ">
       <thead>
       <tr>
@@ -166,5 +166,5 @@
       {{- end}}
       <tbody>
     </table>
-    {{template "[[if .layouts]][[.layouts]][[end]]paginator.html" .}}
-{{template "[[if .layouts]][[.layouts]][[end]]footer[[.theme]].html" .}}
+    {{- template "[[if .layouts]][[.layouts]][[end]]paginator.html" .}}
+{{- template "[[if .layouts]][[.layouts]][[end]]footer[[.theme]].html" .}}
