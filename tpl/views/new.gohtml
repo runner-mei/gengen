@@ -2,7 +2,7 @@
 {{append . "moreStyles" "/public/css/form.css"}}
 {{append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
 {{template "[[if .layouts]][[.layouts]][[end]]header[[.theme]].html" .}}
-        <form action="{{url "[[.controllerName]].Create" }}" method="POST" class="form-horizontal" id="[[underscore .controllerName]]-insert">
+        <form action="{{url "[[.controllerName]].Create" }}" method="POST" class="form-horizontal" id="form-[[underscore .controllerName]]-new">
         {{- $inEditMode := .inEditMode}}{{ set . "inEditMode" true}}
         {{template "[[.controllerName]]/edit_fields.html" .}}
         {{- set . "inEditMode" $inEditMode}}

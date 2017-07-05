@@ -1,7 +1,7 @@
 {{set . "title" "[[edit_label .class]]"}}
 {{append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
 {{template "[[if .layouts]][[.layouts]][[end]]header[[.theme]].html" .}}
-        <form action="{{url "[[.controllerName]].Update" }}" method="POST" class="form-horizontal" id="[[underscore .controllerName]]-edit">
+        <form action="{{url "[[.controllerName]].Update" }}" method="POST" class="form-horizontal" id="form-[[underscore .controllerName]]-edit">
         <input type="hidden" name="_method" value="PUT">
         {{hidden_field . "[[camelizeDownFirst .class.Name]].ID" | render}}
         {{- $inEditMode := .inEditMode}}{{ set . "inEditMode" false}}
