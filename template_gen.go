@@ -586,6 +586,13 @@ type [[.class.Name]] struct {
     " xorm:"-"` + "`" + `
   [[- else -]]
     " xorm:"[[underscore $field.Name]]
+    [[- if $field.Restrictions]]
+      [[- if $field.Restrictions.MaxLength]]
+        [[- if gt $field.Restrictions.MaxLength 999]] text
+        [[- else if lt $field.Restrictions.MaxLength 255]] varchar([[$field.Restrictions.MaxLength]])
+        [[- end -]]
+      [[- end -]]
+    [[- end -]]
     [[- if eq $field.Name "id"]] pk autoincr
     [[- else if eq $field.Name "created_at"]] created
     [[- else if eq $field.Name "updated_at"]] updated
@@ -1066,10 +1073,10 @@ func (c [[.controllerName]]) DeleteByIDs(id_list []int64) revel.Result {
 [[- end]]
 [[- end]]`
 
-var viewEditText = `{{set . "title" "[[edit_label .class]]"}}
-{{append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
-{{template "[[if .layouts]][[.layouts]][[end]]header[[.theme]].html" .}}
-        <form action="{{url "[[.controllerName]].Update" }}" method="POST" class="form-horizontal" id="[[underscore .controllerName]]-edit">
+var viewEditText = `{{- set . "title" "[[edit_label .class]]"}}
+{{- append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
+{{- template "[[if .layouts]][[.layouts]][[end]]header[[.theme]].html" .}}
+    <form action="{{url "[[.controllerName]].Update" }}" method="POST" class="form-horizontal" id="form-[[underscore .controllerName]]-edit">
         <input type="hidden" name="_method" value="PUT">
         {{hidden_field . "[[camelizeDownFirst .class.Name]].ID" | render}}
         {{- $inEditMode := .inEditMode}}{{ set . "inEditMode" false}}
@@ -1081,8 +1088,8 @@ var viewEditText = `{{set . "title" "[[edit_label .class]]"}}
                 <a href="{{url "[[.controllerName]].Index" }}" class="btn btn-info controls">取消</a>
             </div>
         </div>
-        </form>
-{{template "[[if .layouts]][[.layouts]][[end]]footer[[.theme]].html" .}}`
+    </form>
+{{- template "[[if .layouts]][[.layouts]][[end]]footer[[.theme]].html" .}}`
 
 var viewFieldsText = `[[$class := .class]]
 [[- $instaneName := camelizeDownFirst .class.Name]]
@@ -1140,15 +1147,15 @@ var viewFieldsText = `[[$class := .class]]
   [[- end]]
 [[- end]]`
 
-var viewIndexText = `[[$raw := .]]{{$raw := .}}{{set . "title" "[[index_label .class]]"}}
-{{if eq .RunMode "dev"}}
-{{append . "moreScripts" "/public/js/plugins/bootbox/bootbox.js"}}
-{{else}}
-{{append . "moreScripts" "/public/js/plugins/bootbox/bootbox.min.js"}}
-{{end}}
-{{append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
-{{template "[[if .layouts]][[.layouts]][[end]]header[[.theme]].html" .}}
-    {{template "[[.controllerName]]/quick-bar.html" .}}
+var viewIndexText = `[[- $raw := .]]{{$raw := .}}{{set . "title" "[[index_label .class]]"}}
+{{- if eq .RunMode "dev"}}
+{{- append . "moreScripts" "/public/js/plugins/bootbox/bootbox.js"}}
+{{- else}}
+{{- append . "moreScripts" "/public/js/plugins/bootbox/bootbox.min.js"}}
+{{- end}}
+{{- append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
+{{- template "[[if .layouts]][[.layouts]][[end]]header[[.theme]].html" .}}
+    {{- template "[[.controllerName]]/quick-bar.html" .}}
     <table id="[[.class.Name]]Table" class="table table-bordered table-striped table-highlight ">
       <thead>
       <tr>
@@ -1308,14 +1315,13 @@ var viewIndexText = `[[$raw := .]]{{$raw := .}}{{set . "title" "[[index_label .c
       {{- end}}
       <tbody>
     </table>
-    {{template "[[if .layouts]][[.layouts]][[end]]paginator.html" .}}
-{{template "[[if .layouts]][[.layouts]][[end]]footer[[.theme]].html" .}}`
+    {{- template "[[if .layouts]][[.layouts]][[end]]paginator.html" .}}
+{{- template "[[if .layouts]][[.layouts]][[end]]footer[[.theme]].html" .}}`
 
-var viewNewText = `{{set . "title" "[[new_label .class]]"}}
-{{append . "moreStyles" "/public/css/form.css"}}
-{{append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
-{{template "[[if .layouts]][[.layouts]][[end]]header[[.theme]].html" .}}
-        <form action="{{url "[[.controllerName]].Create" }}" method="POST" class="form-horizontal" id="[[underscore .controllerName]]-insert">
+var viewNewText = `{{- set . "title" "[[new_label .class]]"}}
+{{- append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
+{{- template "[[if .layouts]][[.layouts]][[end]]header[[.theme]].html" .}}
+    <form action="{{url "[[.controllerName]].Create" }}" method="POST" class="form-horizontal" id="form-[[underscore .controllerName]]-new">
         {{- $inEditMode := .inEditMode}}{{ set . "inEditMode" true}}
         {{template "[[.controllerName]]/edit_fields.html" .}}
         {{- set . "inEditMode" $inEditMode}}
@@ -1325,8 +1331,8 @@ var viewNewText = `{{set . "title" "[[new_label .class]]"}}
                 <a href="{{url "[[.controllerName]].Index" }}" class="btn btn-info controls">取消</a>
             </div>
         </div>
-        </form>
-{{template "[[if .layouts]][[.layouts]][[end]]footer[[.theme]].html" .}}`
+    </form>
+{{- template "[[if .layouts]][[.layouts]][[end]]footer[[.theme]].html" .}}`
 
 var viewQuickText = `    <div class="quick-actions btn-group m-b">
         [[- if newDisabled .class | not]]
@@ -1588,7 +1594,6 @@ var testYamlText = `- table: '[[tableName .class]]'
 var testBaseText = `package tests
 
 import (
-	"cn/com/hengwei/commons/httputils"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -1596,6 +1601,7 @@ import (
 	"[[.projectPath]]/app"
 	"strings"
 
+  "github.com/three-plus-three/modules/httputil"
 	fixtures "github.com/AreaHQ/go-fixtures"
 	"github.com/Masterminds/squirrel"
 	"github.com/revel/revel"

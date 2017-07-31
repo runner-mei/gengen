@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"cn/com/hengwei/commons/httputils"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -9,6 +8,7 @@ import (
 	"[[.projectPath]]/app"
 	"strings"
 
+  "github.com/three-plus-three/modules/httputil"
 	fixtures "github.com/AreaHQ/go-fixtures"
 	"github.com/Masterminds/squirrel"
 	"github.com/revel/revel"
@@ -44,11 +44,11 @@ func (t *BaseTest) After() {
 }
 
 func (t *BaseTest) DB() *sql.DB {
-	return app.Lifecycle.DB.Engine.DB().DB
+	return app.Lifecycle.ModelEngine.DB().DB
 }
 
 func (t *BaseTest) DataDB() *sql.DB {
-	return app.Lifecycle.DataDB.Engine.DB().DB
+	return app.Lifecycle.DataEngine.DB().DB
 }
 
 func (t *BaseTest) DBRunable() squirrel.Runner{
