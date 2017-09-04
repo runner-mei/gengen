@@ -8,11 +8,45 @@ type DB struct {
   Engine *xorm.Engine
 }
 
+func (db *DB) WithSession(sess *xorm.Session) *DB {
+  return &DB{Engine: db.Engine, session: sess}
+}
+
+func (db *DB) Begin() (*DB, error) {
+  if db.session != nil {
+    return nil, errors.New("run in the transaction")
+  }
+  session := db.Engine.NewSession()
+  return &DB{Engine: db.Engine, session: session}, nil
+}
+
+func (db *DB) Commit() error {
+  if db.session == nil {
+    return sql.ErrTxDone
+  }
+  err := db.session.Commit()
+  db.session = nil
+  return err
+}
+
+func (db *DB) Rollback() error {
+  if db.session == nil {
+    return sql.ErrTxDone
+  }
+  err := db.session.Rollback()
+  db.session = nil
+  return err
+}
+
+func (db *DB) Close() error {
+  return db.Rollback()
+}
+
 [[- range $class := .classes]]
 func (db *DB) [[pluralize $class.Name]]() *orm.Collection {
   return orm.New(func() interface{}{
     return &[[$class.Name]]{}
-  })(db.Engine)
+  })(db.Engine).WithSession(db.session)
 }
 [[- end]]
 
