@@ -4,7 +4,7 @@
     <form action="{{url "[[.controllerName]].Update" [[camelizeDownFirst .class.Name]].ID}}" method="POST" class="form-horizontal" id="form-[[underscore .controllerName]]-edit">
         <input type="hidden" name="_method" value="PUT">
         {{hidden_field . "[[camelizeDownFirst .class.Name]].ID" | render}}
-        {{- $inEditMode := .inEditMode}}{{ set . "inEditMode" false}}
+        {{- $inEditMode := .inEditMode}}{{ set . "inEditMode" true}}
         {{template "[[.controllerName]]/edit_fields.html" .}}
         {{- set . "inEditMode" $inEditMode}}
         <div class="form-group">
