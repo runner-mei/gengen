@@ -238,7 +238,7 @@ func (c [[.controllerName]]) Create([[camelizeDownFirst .class.Name]] *models.[[
 // Edit 编辑指定 id 的记录
 func (c [[.controllerName]]) Edit(id int64) revel.Result {
   var [[camelizeDownFirst .class.Name]] models.[[.class.Name]]
-  err := c.Lifecycle.DB.[[.modelName]]().Id(id).Get(&[[camelizeDownFirst .class.Name]])
+  err := c.Lifecycle.DB.[[.modelName]]().ID(id).Get(&[[camelizeDownFirst .class.Name]])
   if err != nil {
     if err == orm.ErrNotFound {
       c.Flash.Error(revel.Message(c.Request.Locale, "update.record_not_found"))
@@ -296,14 +296,14 @@ func (c [[.controllerName]]) Edit(id int64) revel.Result {
 }
 
 // Update 按 id 更新记录
-func (c [[.controllerName]]) Update([[camelizeDownFirst .class.Name]] *models.[[.class.Name]]) revel.Result {
+func (c [[.controllerName]]) Update(id int64, [[camelizeDownFirst .class.Name]] *models.[[.class.Name]]) revel.Result {
   if [[camelizeDownFirst .class.Name]].Validate(c.Validation) {
     c.Validation.Keep()
     c.FlashParams()
-    return c.Redirect(routes.[[.controllerName]].Edit(int64([[camelizeDownFirst .class.Name]].ID)))
+    return c.Redirect(routes.[[.controllerName]].Edit(id))
   }
 
-  err := c.Lifecycle.DB.[[.modelName]]().Id([[camelizeDownFirst .class.Name]].ID).Update([[camelizeDownFirst .class.Name]])
+  err := c.Lifecycle.DB.[[.modelName]]().ID(id).Update([[camelizeDownFirst .class.Name]])
   if err != nil {
     if err == orm.ErrNotFound {
       c.Flash.Error(revel.Message(c.Request.Locale, "update.record_not_found"))
@@ -317,7 +317,7 @@ func (c [[.controllerName]]) Update([[camelizeDownFirst .class.Name]] *models.[[
       c.Flash.Error(err.Error())
     }
     c.FlashParams()
-    return c.Redirect(routes.[[.controllerName]].Edit(int64([[camelizeDownFirst .class.Name]].ID)))
+    return c.Redirect(routes.[[.controllerName]].Edit(id))
   }
   c.Flash.Success(revel.Message(c.Request.Locale, "update.success"))
   return c.Redirect(routes.[[.controllerName]].Index())
@@ -375,7 +375,7 @@ func (c [[.controllerName]]) Delete([[- range $idx, $fieldName := .class.Primary
 [[else]]
 // Delete 按 id 删除记录
 func (c [[.controllerName]]) Delete(id int64) revel.Result {
-  err :=  c.Lifecycle.DB.[[.modelName]]().Id(id).Delete()
+  err :=  c.Lifecycle.DB.[[.modelName]]().ID(id).Delete()
   if nil != err {
     if err == orm.ErrNotFound {
       c.Flash.Error(revel.Message(c.Request.Locale, "delete.record_not_found"))
