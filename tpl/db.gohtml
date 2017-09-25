@@ -42,9 +42,9 @@ func (db *DB) Close() error {
   if db.session == nil {
     return sql.ErrTxDone
   }
-  err := db.session.Close()
+  db.session.Close()
   db.session = nil
-  return err
+  return nil
 }
 
 func (db *DB) Query(sqlStr string, args ...interface{}) orm.Queryer {
