@@ -6,6 +6,7 @@ import (
 
 type DB struct {
   Engine *xorm.Engine
+  session *xorm.Session
 }
 
 func (db *DB) WithSession(sess *xorm.Session) *DB {

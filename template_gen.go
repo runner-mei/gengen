@@ -691,7 +691,7 @@ func init() {
 [[- if .hasEnumerations]]
     [[- range $field := .class.Fields]]
       [[- if valueInAnnotations $field "enumerationSource" -]]
-      [[- else if hasEnumerations $field -]]
+      [[- else if hasEnumerations $field]]
   revel.TemplateFuncs["[[$field.Name]]_format"] = func(value [[gotype $field.Type]]) string {
     switch value {
       [[- range $eValue := $field.Restrictions.Enumerations]]
@@ -865,7 +865,7 @@ func (c [[.controllerName]]) New() revel.Result {
     for _, o := range [[$varName]] {
       opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
         Value: strconv.FormatInt(int64(o.ID),10),
-        Label: o.[[displayForBelongsTo $field]],
+        Label: fmt.Sprint(o.[[displayForBelongsTo $field]]),
       })
     }
     c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
@@ -906,7 +906,7 @@ func (c [[.controllerName]]) Create([[camelizeDownFirst .class.Name]] *models.[[
 // Edit 编辑指定 id 的记录
 func (c [[.controllerName]]) Edit(id int64) revel.Result {
   var [[camelizeDownFirst .class.Name]] models.[[.class.Name]]
-  err := c.Lifecycle.DB.[[.modelName]]().Id(id).Get(&[[camelizeDownFirst .class.Name]])
+  err := c.Lifecycle.DB.[[.modelName]]().ID(id).Get(&[[camelizeDownFirst .class.Name]])
   if err != nil {
     if err == orm.ErrNotFound {
       c.Flash.Error(revel.Message(c.Request.Locale, "update.record_not_found"))
@@ -951,7 +951,7 @@ func (c [[.controllerName]]) Edit(id int64) revel.Result {
     for _, o := range [[$varName]] {
       opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
         Value: strconv.FormatInt(int64(o.ID),10),
-        Label: o.[[displayForBelongsTo $field]],
+        Label: fmt.Sprint(o.[[displayForBelongsTo $field]]),
       })
     }
     c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
@@ -964,14 +964,14 @@ func (c [[.controllerName]]) Edit(id int64) revel.Result {
 }
 
 // Update 按 id 更新记录
-func (c [[.controllerName]]) Update([[camelizeDownFirst .class.Name]] *models.[[.class.Name]]) revel.Result {
+func (c [[.controllerName]]) Update(id int64, [[camelizeDownFirst .class.Name]] *models.[[.class.Name]]) revel.Result {
   if [[camelizeDownFirst .class.Name]].Validate(c.Validation) {
     c.Validation.Keep()
     c.FlashParams()
-    return c.Redirect(routes.[[.controllerName]].Edit(int64([[camelizeDownFirst .class.Name]].ID)))
+    return c.Redirect(routes.[[.controllerName]].Edit(id))
   }
 
-  err := c.Lifecycle.DB.[[.modelName]]().Id([[camelizeDownFirst .class.Name]].ID).Update([[camelizeDownFirst .class.Name]])
+  err := c.Lifecycle.DB.[[.modelName]]().ID(id).Update([[camelizeDownFirst .class.Name]])
   if err != nil {
     if err == orm.ErrNotFound {
       c.Flash.Error(revel.Message(c.Request.Locale, "update.record_not_found"))
@@ -985,7 +985,7 @@ func (c [[.controllerName]]) Update([[camelizeDownFirst .class.Name]] *models.[[
       c.Flash.Error(err.Error())
     }
     c.FlashParams()
-    return c.Redirect(routes.[[.controllerName]].Edit(int64([[camelizeDownFirst .class.Name]].ID)))
+    return c.Redirect(routes.[[.controllerName]].Edit(id))
   }
   c.Flash.Success(revel.Message(c.Request.Locale, "update.success"))
   return c.Redirect(routes.[[.controllerName]].Index())
@@ -1043,7 +1043,7 @@ func (c [[.controllerName]]) Delete([[- range $idx, $fieldName := .class.Primary
 [[else]]
 // Delete 按 id 删除记录
 func (c [[.controllerName]]) Delete(id int64) revel.Result {
-  err :=  c.Lifecycle.DB.[[.modelName]]().Id(id).Delete()
+  err :=  c.Lifecycle.DB.[[.modelName]]().ID(id).Delete()
   if nil != err {
     if err == orm.ErrNotFound {
       c.Flash.Error(revel.Message(c.Request.Locale, "delete.record_not_found"))
@@ -1076,10 +1076,10 @@ func (c [[.controllerName]]) DeleteByIDs(id_list []int64) revel.Result {
 var viewEditText = `{{- set . "title" "[[edit_label .class]]"}}
 {{- append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
 {{- template "[[if .layouts]][[.layouts]][[end]]header[[.theme]].html" .}}
-    <form action="{{url "[[.controllerName]].Update" }}" method="POST" class="form-horizontal" id="form-[[underscore .controllerName]]-edit">
+    <form action="{{url "[[.controllerName]].Update" .[[camelizeDownFirst .class.Name]].ID}}" method="POST" class="form-horizontal" id="form-[[underscore .controllerName]]-edit">
         <input type="hidden" name="_method" value="PUT">
         {{hidden_field . "[[camelizeDownFirst .class.Name]].ID" | render}}
-        {{- $inEditMode := .inEditMode}}{{ set . "inEditMode" false}}
+        {{- $inEditMode := .inEditMode}}{{ set . "inEditMode" true}}
         {{template "[[.controllerName]]/edit_fields.html" .}}
         {{- set . "inEditMode" $inEditMode}}
         <div class="form-group">
@@ -1322,7 +1322,7 @@ var viewNewText = `{{- set . "title" "[[new_label .class]]"}}
 {{- append . "moreScripts" "[[.customPath]]/public/js/[[underscore .controllerName]]/[[underscore .controllerName]].js"}}
 {{- template "[[if .layouts]][[.layouts]][[end]]header[[.theme]].html" .}}
     <form action="{{url "[[.controllerName]].Create" }}" method="POST" class="form-horizontal" id="form-[[underscore .controllerName]]-new">
-        {{- $inEditMode := .inEditMode}}{{ set . "inEditMode" true}}
+        {{- $inEditMode := .inEditMode}}{{ set . "inEditMode" false}}
         {{template "[[.controllerName]]/edit_fields.html" .}}
         {{- set . "inEditMode" $inEditMode}}
         <div class="form-group">
@@ -1545,11 +1545,11 @@ func (t [[.controllerName]]Test) TestUpdate() {
   [[end]][[end]]
 
 
-  t.Post(t.ReverseUrl("[[.controllerName]].Update"), "application/x-www-form-urlencoded", strings.NewReader(v.Encode()))
+  t.Post(t.ReverseUrl("[[.controllerName]].Update", ruleId), "application/x-www-form-urlencoded", strings.NewReader(v.Encode()))
 	t.AssertOk()
 
 	var [[$varName]] models.[[.class.Name]]
-	err :=  app.Lifecycle.DB.[[.controllerName]]().Id(ruleId).Get(&[[$varName]])
+	err :=  app.Lifecycle.DB.[[.controllerName]]().ID(ruleId).Get(&[[$varName]])
 	if err != nil {
 		t.Assertf(false, err.Error())
 	}
@@ -1771,6 +1771,7 @@ import (
 
 type DB struct {
   Engine *xorm.Engine
+  session *xorm.Session
 }
 
 func (db *DB) WithSession(sess *xorm.Session) *DB {
@@ -1804,7 +1805,18 @@ func (db *DB) Rollback() error {
 }
 
 func (db *DB) Close() error {
-  return db.Rollback()
+  if db.session == nil {
+    return sql.ErrTxDone
+  }
+  db.session.Close()
+  db.session = nil
+  return nil
+}
+
+func (db *DB) Query(sqlStr string, args ...interface{}) orm.Queryer {
+  return orm.NewWithNoInstance()(db.Engine).
+  WithSession(db.session).
+  Query(sqlStr, args...)
 }
 
 [[- range $class := .classes]]

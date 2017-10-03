@@ -23,7 +23,7 @@ func init() {
 [[- if .hasEnumerations]]
     [[- range $field := .class.Fields]]
       [[- if valueInAnnotations $field "enumerationSource" -]]
-      [[- else if hasEnumerations $field -]]
+      [[- else if hasEnumerations $field]]
   revel.TemplateFuncs["[[$field.Name]]_format"] = func(value [[gotype $field.Type]]) string {
     switch value {
       [[- range $eValue := $field.Restrictions.Enumerations]]
@@ -197,7 +197,7 @@ func (c [[.controllerName]]) New() revel.Result {
     for _, o := range [[$varName]] {
       opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
         Value: strconv.FormatInt(int64(o.ID),10),
-        Label: o.[[displayForBelongsTo $field]],
+        Label: fmt.Sprint(o.[[displayForBelongsTo $field]]),
       })
     }
     c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
@@ -283,7 +283,7 @@ func (c [[.controllerName]]) Edit(id int64) revel.Result {
     for _, o := range [[$varName]] {
       opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
         Value: strconv.FormatInt(int64(o.ID),10),
-        Label: o.[[displayForBelongsTo $field]],
+        Label: fmt.Sprint(o.[[displayForBelongsTo $field]]),
       })
     }
     c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
