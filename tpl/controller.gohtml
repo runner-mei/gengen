@@ -24,6 +24,7 @@ func init() {
     [[- range $field := .class.Fields]]
       [[- if valueInAnnotations $field "enumerationSource" -]]
       [[- else if hasEnumerations $field]]
+
   revel.TemplateFuncs["[[$field.Name]]_format"] = func(value [[gotype $field.Type]]) string {
     switch value {
       [[- range $eValue := $field.Restrictions.Enumerations]]
@@ -94,20 +95,20 @@ func (c [[.controllerName]]) Index() revel.Result {
     return c.Render()
   }
 
-  [[if .class.BelongsTo -]]
+[[if .class.BelongsTo -]]
   if len([[camelizeDownFirst .modelName]]) > 0 {
-    [[- range $idx, $belongsTo := .class.BelongsTo -]]
-    [[- $targetName := pluralize $belongsTo.Target -]]
-    [[- $varName := camelizeDownFirst $belongsTo.Target]]
+  [[- range $idx, $belongsTo := .class.BelongsTo -]]
+  [[- $targetName := pluralize $belongsTo.Target -]]
+  [[- $varName := camelizeDownFirst $belongsTo.Target]]
 
-[[- set $ "targetIsExists" false]]
-[[- range $sidx, $b := $.class.BelongsTo]]
-  [[- if eq $belongsTo.Target $b.Target -]]
-  [[- if lt $sidx $idx -]]
-    [[- set $ "targetIsExists" true]]
-  [[- end ]]
-  [[- end ]]
-[[- end -]]
+  [[- set $ "targetIsExists" false]]
+  [[- range $sidx, $b := $.class.BelongsTo]]
+    [[- if eq $belongsTo.Target $b.Target -]]
+    [[- if lt $sidx $idx -]]
+      [[- set $ "targetIsExists" true]]
+    [[- end ]]
+    [[- end ]]
+  [[- end -]]
 
   [[- if not $.targetIsExists ]]
     var [[camelizeDownFirst $belongsTo.Target]]IDList = make([]int64, 0, len([[camelizeDownFirst $modelName]]))
