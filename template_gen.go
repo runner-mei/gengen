@@ -1113,51 +1113,51 @@ var viewFieldsText = `[[$class := .class]]
   [[- if isID $column]]
   [[- else if editDisabled $column]]
   [[- else if isBelongsTo $class  $column ]]
-    {{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" .[[belongsToClassName $class  $column | pluralize | camelizeDownFirst]] [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+    {{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" .[[belongsToClassName $class  $column | pluralize | camelizeDownFirst]] [[if and $column.IsReadOnly]]| f_setReadOnly .inEditMode [[end]] | render}}
   [[- else if valueInAnnotations $column "enumerationSource" ]]
-    {{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" .global.[[valueInAnnotations $column "enumerationSource"]] [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+    {{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" .global.[[valueInAnnotations $column "enumerationSource"]] [[if and $column.IsReadOnly]]| f_setReadOnly .inEditMode [[end]] | render}}
   [[- else if hasEnumerations $column ]]
-    {{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" "[[jsEnumeration $column.Restrictions.Enumerations | js]]" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+    {{select_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" "[[jsEnumeration $column.Restrictions.Enumerations | js]]" [[if and $column.IsReadOnly]]| f_setReadOnly .inEditMode [[end]] | render}}
   [[- else if $column.Format ]]
     [[- if eq $column.Format "ip" ]]
       {{ipaddress_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" | render}}
     [[- else if eq $column.Format "email" ]]
-      {{email_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+      {{email_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setReadOnly .inEditMode [[end]] | render}}
     [[- end]]
   [[- else if eq $column.Type "string" ]]
     [[- if isClob $column ]]
     {{textarea_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" 3  0 | [[template "lengthLimit" $column]] render}}
     [[- else]]
-    {{text_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+    {{text_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setReadOnly .inEditMode [[end]] | render}}
     [[- end]]
   [[- else if eq $column.Type "integer" "number" "biginteger" "int" "int64" "uint" "uint64" "float" "float64" ]]
     [[- if $column.Restrictions]]
       [[- if $column.Restrictions.MinValue]]
         [[- if $column.Restrictions.MaxValue]]
-          {{number_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+          {{number_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setReadOnly .inEditMode [[end]] | render}}
         [[- else]]
-          {{number_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+          {{number_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setReadOnly .inEditMode [[end]] | render}}
         [[- end]]
       [[- else if $column.Restrictions.MaxValue]]
-        {{number_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+        {{number_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setReadOnly .inEditMode [[end]] | render}}
       [[- end]]
     [[- else]]
-      {{number_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+      {{number_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setReadOnly .inEditMode [[end]] | render}}
     [[- end]]
   [[- else if eq $column.Type "boolean" "bool" ]]
-    {{checkbox_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+    {{checkbox_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setReadOnly .inEditMode [[end]] | render}}
   [[- else if eq $column.Type "password" ]]
-    {{password_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+    {{password_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setReadOnly .inEditMode [[end]] | render}}
   [[- else if eq $column.Type "time" ]]
-    {{time_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+    {{time_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setReadOnly .inEditMode [[end]] | render}}
   [[- else if eq $column.Type "datetime" ]]
-    {{datetime_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+    {{datetime_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setReadOnly .inEditMode [[end]] | render}}
   [[- else if eq $column.Type "date" ]]
-    {{date_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+    {{date_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setReadOnly .inEditMode [[end]] | render}}
   [[- else if eq $column.Type "map" ]]
-    {{map_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+    {{map_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setReadOnly .inEditMode [[end]] | render}}
   [[- else]]
-    {{text_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setEditMode .inEditMode [[end]] | render}}
+    {{text_field . "[[$instaneName]].[[goify $column.Name true]]" "[[localizeName $column]]:" [[if and $column.IsReadOnly]]| f_setReadOnly .inEditMode [[end]] | render}}
   [[- end]]
 [[- end]]`
 
