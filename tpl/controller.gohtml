@@ -64,24 +64,24 @@ type [[.controllerName]] struct {
 
 // Index 列出所有记录
 func (c [[.controllerName]]) Index() revel.Result {
+  var pageIndex, pageSize int
+  c.Params.Bind(&pageIndex, "pageIndex")
+  c.Params.Bind(&pageSize, "pageSize")
+  if pageSize <= 0 {
+    pageSize = toolbox.DEFAULT_SIZE_PER_PAGE
+  }
+
   var cond orm.Cond
-  var name string
-  c.Params.Bind(&name, "query")
-  if name != "" {
-    cond = orm.Cond{"name LIKE": "%" + name + "%"}
+  var query string
+  c.Params.Bind(&query, "query")
+  if query != "" {
+    cond = orm.Cond{"name LIKE": "%" + query + "%"}
   }
 
   total, err := c.Lifecycle.DB.[[.modelName]]().Where().And(cond).Count()
   if err != nil {
     c.Validation.Error(err.Error())
     return c.Render(err)
-  }
-
-  var pageIndex, pageSize int
-  c.Params.Bind(&pageIndex, "pageIndex")
-  c.Params.Bind(&pageSize, "pageSize")
-  if pageSize <= 0 {
-    pageSize = toolbox.DEFAULT_SIZE_PER_PAGE
   }
 
   var [[camelizeDownFirst .modelName]] []models.[[.class.Name]]
@@ -96,6 +96,14 @@ func (c [[.controllerName]]) Index() revel.Result {
   }
 
 [[if .class.BelongsTo -]]
+
+  var [[camelizeDownFirst .modelName | singularize]]List = make([]map[string]interface{}, 0, len([[camelizeDownFirst .modelName]]))
+  for idx := range [[camelizeDownFirst .modelName]] {
+    [[camelizeDownFirst .modelName | singularize]]List = append([[camelizeDownFirst .modelName | singularize]]List, map[string]interface{}{
+      "[[camelizeDownFirst .modelName | singularize]]": [[camelizeDownFirst .modelName]][idx],
+    })
+  }
+
   if len([[camelizeDownFirst .modelName]]) > 0 {
   [[- range $idx, $belongsTo := .class.BelongsTo -]]
   [[- $targetName := pluralize $belongsTo.Target -]]
@@ -120,7 +128,6 @@ func (c [[.controllerName]]) Index() revel.Result {
     }
 
   [[- if not $.targetIsExists ]]
-    var [[$varName]]ByID map[int64]models.[[$belongsTo.Target]]
     var [[$varName]]List []models.[[$belongsTo.Target]]
   [[- else]]
     [[$varName]]List = nil
@@ -131,20 +138,26 @@ func (c [[.controllerName]]) Index() revel.Result {
     if err != nil {
       c.Validation.Error("load [[$belongsTo.Target]] fail, " + err.Error())
     } else {
-      if [[$varName]]ByID == nil {
-        [[$varName]]ByID = make(map[int64]models.[[$belongsTo.Target]], len([[$varName]]List))
-      }
+
       for idx := range [[$varName]]List {
-        [[$varName]]ByID[ [[$varName]]List[idx].ID ] = [[$varName]]List[idx]
+        for vidx := range [[camelizeDownFirst $modelName]] {
+          if [[$varName]]List[idx].ID == [[camelizeDownFirst $modelName]][vidx].[[$belongsTo.AttributeName false]] {
+          [[camelizeDownFirst $modelName | singularize]]List[vidx]["[[$varName]]"] = [[$varName]]List[idx]
+          }
+        }
       }
-      c.ViewArgs["[[$varName]]ByID"] = [[$varName]]ByID
     }
     [[- end]]
   }
-  [[- end]]
+
+  paginator := toolbox.NewPaginator(c.Request.Request, pageSize, total)
+  c.ViewArgs["[[camelizeDownFirst .modelName]]"] = [[camelizeDownFirst .modelName | singularize]]List 
+  return c.Render(paginator)
+  [[- else]]
 
   paginator := toolbox.NewPaginator(c.Request.Request, pageSize, total)
   return c.Render([[camelizeDownFirst .modelName]], paginator)
+  [[- end]]
 }
 
 [[set . "hasAsync" false]]

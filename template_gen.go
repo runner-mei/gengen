@@ -692,6 +692,7 @@ func init() {
     [[- range $field := .class.Fields]]
       [[- if valueInAnnotations $field "enumerationSource" -]]
       [[- else if hasEnumerations $field]]
+
   revel.TemplateFuncs["[[$field.Name]]_format"] = func(value [[gotype $field.Type]]) string {
     switch value {
       [[- range $eValue := $field.Restrictions.Enumerations]]
@@ -731,24 +732,24 @@ type [[.controllerName]] struct {
 
 // Index 列出所有记录
 func (c [[.controllerName]]) Index() revel.Result {
+  var pageIndex, pageSize int
+  c.Params.Bind(&pageIndex, "pageIndex")
+  c.Params.Bind(&pageSize, "pageSize")
+  if pageSize <= 0 {
+    pageSize = toolbox.DEFAULT_SIZE_PER_PAGE
+  }
+
   var cond orm.Cond
-  var name string
-  c.Params.Bind(&name, "query")
-  if name != "" {
-    cond = orm.Cond{"name LIKE": "%" + name + "%"}
+  var query string
+  c.Params.Bind(&query, "query")
+  if query != "" {
+    cond = orm.Cond{"name LIKE": "%" + query + "%"}
   }
 
   total, err := c.Lifecycle.DB.[[.modelName]]().Where().And(cond).Count()
   if err != nil {
     c.Validation.Error(err.Error())
     return c.Render(err)
-  }
-
-  var pageIndex, pageSize int
-  c.Params.Bind(&pageIndex, "pageIndex")
-  c.Params.Bind(&pageSize, "pageSize")
-  if pageSize <= 0 {
-    pageSize = toolbox.DEFAULT_SIZE_PER_PAGE
   }
 
   var [[camelizeDownFirst .modelName]] []models.[[.class.Name]]
@@ -762,20 +763,28 @@ func (c [[.controllerName]]) Index() revel.Result {
     return c.Render()
   }
 
-  [[if .class.BelongsTo -]]
-  if len([[camelizeDownFirst .modelName]]) > 0 {
-    [[- range $idx, $belongsTo := .class.BelongsTo -]]
-    [[- $targetName := pluralize $belongsTo.Target -]]
-    [[- $varName := camelizeDownFirst $belongsTo.Target]]
+[[if .class.BelongsTo -]]
 
-[[- set $ "targetIsExists" false]]
-[[- range $sidx, $b := $.class.BelongsTo]]
-  [[- if eq $belongsTo.Target $b.Target -]]
-  [[- if lt $sidx $idx -]]
-    [[- set $ "targetIsExists" true]]
-  [[- end ]]
-  [[- end ]]
-[[- end -]]
+  var [[camelizeDownFirst .modelName | singularize]]List = make([]map[string]interface{}, 0, len([[camelizeDownFirst .modelName]]))
+  for idx := range [[camelizeDownFirst .modelName]] {
+    [[camelizeDownFirst .modelName | singularize]]List = append([[camelizeDownFirst .modelName | singularize]]List, map[string]interface{}{
+      "[[camelizeDownFirst .modelName | singularize]]": [[camelizeDownFirst .modelName]][idx],
+    })
+  }
+
+  if len([[camelizeDownFirst .modelName]]) > 0 {
+  [[- range $idx, $belongsTo := .class.BelongsTo -]]
+  [[- $targetName := pluralize $belongsTo.Target -]]
+  [[- $varName := camelizeDownFirst $belongsTo.Target]]
+
+  [[- set $ "targetIsExists" false]]
+  [[- range $sidx, $b := $.class.BelongsTo]]
+    [[- if eq $belongsTo.Target $b.Target -]]
+    [[- if lt $sidx $idx -]]
+      [[- set $ "targetIsExists" true]]
+    [[- end ]]
+    [[- end ]]
+  [[- end -]]
 
   [[- if not $.targetIsExists ]]
     var [[camelizeDownFirst $belongsTo.Target]]IDList = make([]int64, 0, len([[camelizeDownFirst $modelName]]))
@@ -787,7 +796,6 @@ func (c [[.controllerName]]) Index() revel.Result {
     }
 
   [[- if not $.targetIsExists ]]
-    var [[$varName]]ByID map[int64]models.[[$belongsTo.Target]]
     var [[$varName]]List []models.[[$belongsTo.Target]]
   [[- else]]
     [[$varName]]List = nil
@@ -798,20 +806,26 @@ func (c [[.controllerName]]) Index() revel.Result {
     if err != nil {
       c.Validation.Error("load [[$belongsTo.Target]] fail, " + err.Error())
     } else {
-      if [[$varName]]ByID == nil {
-        [[$varName]]ByID = make(map[int64]models.[[$belongsTo.Target]], len([[$varName]]List))
-      }
+
       for idx := range [[$varName]]List {
-        [[$varName]]ByID[ [[$varName]]List[idx].ID ] = [[$varName]]List[idx]
+        for vidx := range [[camelizeDownFirst $modelName]] {
+          if [[$varName]]List[idx].ID == [[camelizeDownFirst $modelName]][vidx].[[$belongsTo.AttributeName false]] {
+          [[camelizeDownFirst $modelName | singularize]]List[vidx]["[[$varName]]"] = [[$varName]]List[idx]
+          }
+        }
       }
-      c.ViewArgs["[[$varName]]ByID"] = [[$varName]]ByID
     }
     [[- end]]
   }
-  [[- end]]
+
+  paginator := toolbox.NewPaginator(c.Request.Request, pageSize, total)
+  c.ViewArgs["[[camelizeDownFirst .modelName]]"] = [[camelizeDownFirst .modelName | singularize]]List 
+  return c.Render(paginator)
+  [[- else]]
 
   paginator := toolbox.NewPaginator(c.Request.Request, pageSize, total)
   return c.Render([[camelizeDownFirst .modelName]], paginator)
+  [[- end]]
 }
 
 [[set . "hasAsync" false]]
@@ -1189,13 +1203,19 @@ var viewIndexText = `[[- $raw := .]]{{$raw := .}}{{set . "title" "[[index_label 
       </tr>
       </thead>
       <tbody>
-      [[set . "hasAsync" false]]
+      [[- set . "hasAsync" false]]
       [[- range $column := .class.Fields]]
         [[- if hasFeature $column "async" -]]
-          [[set $ "hasAsync" true]]
+          [[- set $ "hasAsync" true]]
         [[- end ]]
       [[- end -]]
-      {{- range $idx, $v := .[[camelizeDownFirst .modelName]]}}
+
+      {{- range $idx, $instance := .[[camelizeDownFirst .modelName]]}}
+        [[- if .class.BelongsTo -]]
+        {{$v := $instance.[[ camelizeDownFirst .modelName | singularize]]}}
+        [[- else]]
+        {{$v := $instance}}
+        [[- end]]
         <tr [[- if $raw.class.PrimaryKey | not]] x-record-key="{{$v.ID}}" [[- if .hasAsync]]x-record-url="{{url "[[.controllerName]].IndexAsync" $v.ID}}"[[end]][[end]]>
         [[- if $raw.class.PrimaryKey | not]]
           [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not]]
@@ -1222,23 +1242,12 @@ var viewIndexText = `[[- $raw := .]]{{$raw := .}}{{set . "title" "[[index_label 
           [[- if needDisplay $column]]
             [[- $bt := belongsTo $raw.class $column]]
             [[- if $bt]]
-                [[- $refClass := class $bt.Target]]
-                [[- $referenceFields := referenceFields $column]]
-            {{- if $.[[camelizeDownFirst $refClass.Name]]ByID }}
-              {{- $rValue := index $.[[camelizeDownFirst $refClass.Name]]ByID $v.[[goify $column.Name true]]}}
-                [[- range $rField := $referenceFields ]]
-                  [[- $referenceField := field $refClass $rField.Name]]
-              <td>
-              {{- if $rValue}}
-                {{- $rValue.[[goify $referenceField.Name true]]}}
-              {{- end -}}
-              </td>
-                [[- end]]
-            {{- else}}
+              [[- $refClass := class $bt.Target]]
+              [[- $referenceFields := referenceFields $column]]
               [[- range $rField := $referenceFields ]]
-              <td></td>
+                [[- $referenceField := field $refClass $rField.Name]]
+              <td>{{$instance.[[camelizeDownFirst $refClass.Name]].[[goify $referenceField.Name true]]}}</td>
               [[- end]]
-            {{- end}}
 
             [[- else]]
             <td [[if hasFeature $column "async" -]] x-field-name="[[$column.Name]]" [[- end]]>
@@ -1313,7 +1322,7 @@ var viewIndexText = `[[- $raw := .]]{{$raw := .}}{{set . "title" "[[index_label 
         [[- end]]
         </tr>
       {{- end}}
-      <tbody>
+      </tbody>
     </table>
     {{- template "[[if .layouts]][[.layouts]][[end]]paginator.html" .}}
 {{- template "[[if .layouts]][[.layouts]][[end]]footer[[.theme]].html" .}}`

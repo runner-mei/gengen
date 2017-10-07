@@ -47,7 +47,12 @@
         [[- end ]]
       [[- end -]]
 
-      {{- range $idx, $v := .[[camelizeDownFirst .modelName]]}}
+      {{- range $idx, $instance := .[[camelizeDownFirst .modelName]]}}
+        [[- if .class.BelongsTo -]]
+        {{$v := $instance.[[ camelizeDownFirst .modelName | singularize]]}}
+        [[- else]]
+        {{$v := $instance}}
+        [[- end]]
         <tr [[- if $raw.class.PrimaryKey | not]] x-record-key="{{$v.ID}}" [[- if .hasAsync]]x-record-url="{{url "[[.controllerName]].IndexAsync" $v.ID}}"[[end]][[end]]>
         [[- if $raw.class.PrimaryKey | not]]
           [[- if hasAllFeatures $raw.class "editDisabled" "deleteDisabled" | not]]
@@ -74,23 +79,12 @@
           [[- if needDisplay $column]]
             [[- $bt := belongsTo $raw.class $column]]
             [[- if $bt]]
-                [[- $refClass := class $bt.Target]]
-                [[- $referenceFields := referenceFields $column]]
-            {{- if $.[[camelizeDownFirst $refClass.Name]]ByID }}
-              {{- $rValue := index $.[[camelizeDownFirst $refClass.Name]]ByID $v.[[goify $column.Name true]]}}
-                [[- range $rField := $referenceFields ]]
-                  [[- $referenceField := field $refClass $rField.Name]]
-              <td>
-              {{- if $rValue}}
-                {{- $rValue.[[goify $referenceField.Name true]]}}
-              {{- end -}}
-              </td>
-                [[- end]]
-            {{- else}}
+              [[- $refClass := class $bt.Target]]
+              [[- $referenceFields := referenceFields $column]]
               [[- range $rField := $referenceFields ]]
-              <td></td>
+                [[- $referenceField := field $refClass $rField.Name]]
+              <td>{{$instance.[[camelizeDownFirst $refClass.Name]].[[goify $referenceField.Name true]]}}</td>
               [[- end]]
-            {{- end}}
 
             [[- else]]
             <td [[if hasFeature $column "async" -]] x-field-name="[[$column.Name]]" [[- end]]>
@@ -165,7 +159,7 @@
         [[- end]]
         </tr>
       {{- end}}
-      <tbody>
+      </tbody>
     </table>
     {{- template "[[if .layouts]][[.layouts]][[end]]paginator.html" .}}
 {{- template "[[if .layouts]][[.layouts]][[end]]footer[[.theme]].html" .}}

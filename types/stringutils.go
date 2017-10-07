@@ -1,6 +1,8 @@
 package types
 
 import (
+	"strings"
+
 	"github.com/grsmv/inflect"
 )
 
@@ -69,7 +71,8 @@ func Underscore(name string) string {
 	case "MplsCE":
 		return "mpls_ce"
 	}
-	return inflect.Underscore(name)
+	uname := inflect.Underscore(name)
+	return strings.Replace(uname, "_i_d", "_id", -1)
 }
 
 func Pluralize(name string) string {
@@ -140,7 +143,7 @@ func Tableize(className string) string {
 	case "MplsCE":
 		return "mpls_ce"
 	}
-	return inflect.Pluralize(inflect.Underscore(className))
+	return Pluralize(Underscore(className))
 }
 
 func Singularize(word string) string {
