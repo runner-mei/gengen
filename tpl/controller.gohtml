@@ -178,7 +178,7 @@ func (c [[.controllerName]]) IndexAsync(id int64) revel.Result {
   [[- $targetName := pluralize $belongsTo.Target]]
   [[- $varName := camelizeDownFirst $targetName]]
 
-func (c [[.controllerName]]) with[[$targetName]]() revel.Result {
+func (c [[.controllerName]]) with[[$targetName]]() ([]models.[[$belongsTo.Target]], error) {
   var [[$varName]] []models.[[$belongsTo.Target]]
   err := c.Lifecycle.DB.[[$targetName]]().Where().
     All(&[[$varName]])
@@ -188,23 +188,25 @@ func (c [[.controllerName]]) with[[$targetName]]() revel.Result {
       Value: "",
       Label: revel.Message(c.Request.Locale, "select.empty"),
     }}
-  } else {
-    [[- $field := field $class $belongsTo.Name]]
-    var opt[[$targetName]] = make([]forms.InputChoice, 0, len([[$varName]]))
-    [[- if not $field.IsRequired]]
-      opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
-        Value: "",
-        Label: revel.Message(c.Request.Locale, "select.empty"),
-      })
-    [[- end]]
-    for _, o := range [[$varName]] {
-      opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
-        Value: strconv.FormatInt(int64(o.ID),10),
-        Label: fmt.Sprint(o.[[displayForBelongsTo $field]]),
-      })
-    }
-    c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
+    return nil, err
   }
+  [[- $field := field $class $belongsTo.Name]]
+  
+  var opt[[$targetName]] = make([]forms.InputChoice, 0, len([[$varName]]))
+  [[- if not $field.IsRequired]]
+    opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
+      Value: "",
+      Label: revel.Message(c.Request.Locale, "select.empty"),
+    })
+  [[- end]]
+  for _, o := range [[$varName]] {
+    opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
+      Value: strconv.FormatInt(int64(o.ID),10),
+      Label: fmt.Sprint(o.[[displayForBelongsTo $field]]),
+    })
+  }
+  c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
+  return [[$varName]], nil
 }
   [[- end]][[/* range .class.BelongsTo */]]
 [[- end]][[/* if .class.BelongsTo */]]
