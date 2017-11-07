@@ -64,12 +64,7 @@ type [[.controllerName]] struct {
 
 // Index 列出所有记录
 func (c [[.controllerName]]) Index() revel.Result {
-  var pageIndex, pageSize int
-  c.Params.Bind(&pageIndex, "pageIndex")
-  c.Params.Bind(&pageSize, "pageSize")
-  if pageSize <= 0 {
-    pageSize = toolbox.DEFAULT_SIZE_PER_PAGE
-  }
+  var page = c.pagingParams()
 
   var cond orm.Cond
   var query string
@@ -87,8 +82,8 @@ func (c [[.controllerName]]) Index() revel.Result {
   var [[camelizeDownFirst .modelName]] []models.[[.class.Name]]
   err = c.Lifecycle.DB.[[.modelName]]().Where().
     And(cond).
-    Offset(pageIndex * pageSize).
-    Limit(pageSize).
+    Offset(page.Offset()).
+    Limit(page.Limit()).
     All(&[[camelizeDownFirst .modelName]])
   if err != nil {
     c.Validation.Error(err.Error())
@@ -150,12 +145,12 @@ func (c [[.controllerName]]) Index() revel.Result {
     [[- end]]
   }
 
-  paginator := toolbox.NewPaginator(c.Request.Request, pageSize, total)
+  paginator := page.Get(total)
   c.ViewArgs["[[camelizeDownFirst .modelName]]"] = [[camelizeDownFirst .modelName | singularize]]List 
   return c.Render(paginator)
   [[- else]]
 
-  paginator := toolbox.NewPaginator(c.Request.Request, pageSize, total)
+  paginator := page.Get(total)
   return c.Render([[camelizeDownFirst .modelName]], paginator)
   [[- end]]
 }
