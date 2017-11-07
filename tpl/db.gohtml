@@ -58,7 +58,7 @@ func (db *DB) Query(sqlStr string, args ...interface{}) orm.Queryer {
 func (db *DB) [[pluralize $class.Name]]() *orm.Collection {
   return orm.New(func() interface{}{
     return &[[$class.Name]]{}
-  })(db.Engine).WithSession(db.session)
+  }, KeyFor[[pluralize $class.Name]])(db.Engine).WithSession(db.session)
 }
 [[- end]]
 
