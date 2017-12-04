@@ -172,8 +172,18 @@ func (c [[.controllerName]]) IndexAsync(id int64) revel.Result {
   [[- range $idx, $belongsTo := .class.BelongsTo ]]
   [[- $targetName := pluralize $belongsTo.Target]]
   [[- $varName := camelizeDownFirst $targetName]]
+  
+  [[- set $ "targetIsExists" false]]
+  [[- range $sidx, $b := $.class.BelongsTo]]
+    [[- if eq $belongsTo.Target $b.Target -]]
+    [[- if lt $sidx $idx -]]
+      [[- set $ "targetIsExists" true]]
+    [[- end ]]
+    [[- end ]]
+  [[- end -]]
 
-func (c [[.controllerName]]) with[[$targetName]]() ([]models.[[$belongsTo.Target]], error) {
+  [[- if not $.targetIsExists ]]
+func (c [[$.controllerName]]) with[[$targetName]]() ([]models.[[$belongsTo.Target]], error) {
   var [[$varName]] []models.[[$belongsTo.Target]]
   err := c.Lifecycle.DB.[[$targetName]]().Where().
     All(&[[$varName]])
@@ -203,6 +213,7 @@ func (c [[.controllerName]]) with[[$targetName]]() ([]models.[[$belongsTo.Target
   c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
   return [[$varName]], nil
 }
+    [[- end]][[/* if not  .targetIsExists */]]
   [[- end]][[/* range .class.BelongsTo */]]
 [[- end]][[/* if .class.BelongsTo */]]
 

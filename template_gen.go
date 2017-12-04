@@ -732,12 +732,7 @@ type [[.controllerName]] struct {
 
 // Index 列出所有记录
 func (c [[.controllerName]]) Index() revel.Result {
-  var pageIndex, pageSize int
-  c.Params.Bind(&pageIndex, "pageIndex")
-  c.Params.Bind(&pageSize, "pageSize")
-  if pageSize <= 0 {
-    pageSize = toolbox.DEFAULT_SIZE_PER_PAGE
-  }
+  var page = c.pagingParams()
 
   var cond orm.Cond
   var query string
@@ -755,8 +750,8 @@ func (c [[.controllerName]]) Index() revel.Result {
   var [[camelizeDownFirst .modelName]] []models.[[.class.Name]]
   err = c.Lifecycle.DB.[[.modelName]]().Where().
     And(cond).
-    Offset(pageIndex * pageSize).
-    Limit(pageSize).
+    Offset(page.Offset()).
+    Limit(page.Limit()).
     All(&[[camelizeDownFirst .modelName]])
   if err != nil {
     c.Validation.Error(err.Error())
@@ -818,12 +813,12 @@ func (c [[.controllerName]]) Index() revel.Result {
     [[- end]]
   }
 
-  paginator := toolbox.NewPaginator(c.Request.Request, pageSize, total)
+  paginator := page.Get(total)
   c.ViewArgs["[[camelizeDownFirst .modelName]]"] = [[camelizeDownFirst .modelName | singularize]]List 
   return c.Render(paginator)
   [[- else]]
 
-  paginator := toolbox.NewPaginator(c.Request.Request, pageSize, total)
+  paginator := page.Get(total)
   return c.Render([[camelizeDownFirst .modelName]], paginator)
   [[- end]]
 }
@@ -841,25 +836,24 @@ func (c [[.controllerName]]) IndexAsync(id int64) revel.Result {
 }
 [[- end]]
 
-[[if newDisabled .class | not -]]
-// New 编辑新建记录
-func (c [[.controllerName]]) New() revel.Result {
-  [[if .class.BelongsTo -]]
-  var err error
-  [[range $idx, $belongsTo := .class.BelongsTo ]]
-      [[- set $ "targetIsExists" false]]
-      [[- range $sidx, $b := $.class.BelongsTo]]
-        [[- if eq $belongsTo.Target $b.Target -]]
-        [[- if lt $sidx $idx -]]
-          [[- set $ "targetIsExists" true]]
-        [[- end ]]
-        [[- end ]]
-      [[- end -]]
+[[- if .class.BelongsTo -]]
+  [[- range $idx, $belongsTo := .class.BelongsTo ]]
+  [[- $targetName := pluralize $belongsTo.Target]]
+  [[- $varName := camelizeDownFirst $targetName]]
+  
+  [[- set $ "targetIsExists" false]]
+  [[- range $sidx, $b := $.class.BelongsTo]]
+    [[- if eq $belongsTo.Target $b.Target -]]
+    [[- if lt $sidx $idx -]]
+      [[- set $ "targetIsExists" true]]
+    [[- end ]]
+    [[- end ]]
+  [[- end -]]
 
   [[- if not $.targetIsExists ]]
-
-  [[$targetName := pluralize $belongsTo.Target]][[$varName := camelizeDownFirst $targetName]]var [[$varName]] []models.[[$belongsTo.Target]]
-  err = c.Lifecycle.DB.[[$targetName]]().Where().
+func (c [[$.controllerName]]) with[[$targetName]]() ([]models.[[$belongsTo.Target]], error) {
+  var [[$varName]] []models.[[$belongsTo.Target]]
+  err := c.Lifecycle.DB.[[$targetName]]().Where().
     All(&[[$varName]])
   if err != nil {
     c.Validation.Error("load [[$belongsTo.Target]] fail, " + err.Error())
@@ -867,26 +861,41 @@ func (c [[.controllerName]]) New() revel.Result {
       Value: "",
       Label: revel.Message(c.Request.Locale, "select.empty"),
     }}
-  } else {
-    [[$field := field $class $belongsTo.Name -]]
-    var opt[[$targetName]] = make([]forms.InputChoice, 0, len([[$varName]]))
-    [[- if not $field.IsRequired]]
-      opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
-        Value: "",
-        Label: revel.Message(c.Request.Locale, "select.empty"),
-      })
-    [[- end]]
-    for _, o := range [[$varName]] {
-      opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
-        Value: strconv.FormatInt(int64(o.ID),10),
-        Label: fmt.Sprint(o.[[displayForBelongsTo $field]]),
-      })
-    }
-    c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
+    return nil, err
   }
-    [[- end]][[/* if not $.targetIsExists */]]
+  [[- $field := field $class $belongsTo.Name]]
+  
+  var opt[[$targetName]] = make([]forms.InputChoice, 0, len([[$varName]]))
+  [[- if not $field.IsRequired]]
+    opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
+      Value: "",
+      Label: revel.Message(c.Request.Locale, "select.empty"),
+    })
   [[- end]]
-  [[- end]]
+  for _, o := range [[$varName]] {
+    opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
+      Value: strconv.FormatInt(int64(o.ID),10),
+      Label: fmt.Sprint(o.[[displayForBelongsTo $field]]),
+    })
+  }
+  c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
+  return [[$varName]], nil
+}
+    [[- end]][[/* if not  .targetIsExists */]]
+  [[- end]][[/* range .class.BelongsTo */]]
+[[- end]][[/* if .class.BelongsTo */]]
+
+[[if newDisabled .class | not -]]
+// New 编辑新建记录
+func (c [[.controllerName]]) New() revel.Result {
+
+[[- if .class.BelongsTo -]]
+  [[- range $idx, $belongsTo := .class.BelongsTo ]]
+  [[- $targetName := pluralize $belongsTo.Target]]
+  c.with[[$targetName]]()
+  [[- end]][[/* range .class.BelongsTo */]]
+[[- end]][[/* if .class.BelongsTo */]]
+
   return c.Render()
 }
 
@@ -900,13 +909,7 @@ func (c [[.controllerName]]) Create([[camelizeDownFirst .class.Name]] *models.[[
 
   _, err := c.Lifecycle.DB.[[.modelName]]().Insert([[camelizeDownFirst .class.Name]])
   if err != nil {
-    if oerr, ok := err.(*orm.Error); ok {
-      for _, validation := range oerr.Validations {
-        c.Validation.Error(validation.Message).Key(models.KeyFor[[.modelName]](validation.Key))
-      }
-      c.Validation.Keep()
-    }
-    c.Flash.Error(err.Error())
+    c.ErrorToFlash(err)
     c.FlashParams()
     return c.Redirect(routes.[[.controllerName]].New())
   }
@@ -922,58 +925,17 @@ func (c [[.controllerName]]) Edit(id int64) revel.Result {
   var [[camelizeDownFirst .class.Name]] models.[[.class.Name]]
   err := c.Lifecycle.DB.[[.modelName]]().ID(id).Get(&[[camelizeDownFirst .class.Name]])
   if err != nil {
-    if err == orm.ErrNotFound {
-      c.Flash.Error(revel.Message(c.Request.Locale, "update.record_not_found"))
-    } else {
-      c.Flash.Error(err.Error())
-    }
+    c.ErrorToFlash(err)
     c.FlashParams()
     return c.Redirect(routes.[[.controllerName]].Index())
   }
 
-  [[if .class.BelongsTo]]
+[[ if .class.BelongsTo -]]
   [[- range $idx, $belongsTo := .class.BelongsTo ]]
-      [[- set $ "targetIsExists" false]]
-      [[- range $sidx, $b := $.class.BelongsTo]]
-        [[- if eq $belongsTo.Target $b.Target -]]
-        [[- if lt $sidx $idx -]]
-          [[- set $ "targetIsExists" true]]
-        [[- end ]]
-        [[- end ]]
-      [[- end -]]
-
-  [[- if not $.targetIsExists ]]
-
-  [[$targetName := pluralize $belongsTo.Target]][[$varName := camelizeDownFirst $targetName]]var [[$varName]] []models.[[$belongsTo.Target]]
-  err = c.Lifecycle.DB.[[$targetName]]().Where().
-    All(&[[$varName]])
-  if err != nil {
-    c.Validation.Error("load [[$belongsTo.Target]] fail, " + err.Error())
-    c.ViewArgs["[[$varName]]"] = []forms.InputChoice{{
-      Value: "",
-      Label: revel.Message(c.Request.Locale, "select.empty"),
-    }}
-  } else {
-    [[$field := field $class $belongsTo.Name -]]
-    var opt[[$targetName]] = make([]forms.InputChoice, 0, len([[$varName]]))
-    [[- if not $field.IsRequired]]
-      opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
-        Value: "",
-        Label: revel.Message(c.Request.Locale, "select.empty"),
-      })
-    [[- end]]
-    for _, o := range [[$varName]] {
-      opt[[$targetName]] = append(opt[[$targetName]], forms.InputChoice{
-        Value: strconv.FormatInt(int64(o.ID),10),
-        Label: fmt.Sprint(o.[[displayForBelongsTo $field]]),
-      })
-    }
-    c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
-  }
-    [[- end]][[/* if not $.targetIsExists */]]
-  [[- end]]
-  [[- end]]
-
+  [[- $targetName := pluralize $belongsTo.Target]]
+  c.with[[$targetName]]()
+  [[- end]][[/* range .class.BelongsTo */]]
+[[- end]][[/* if .class.BelongsTo */]]
   return c.Render([[camelizeDownFirst .class.Name]])
 }
 
@@ -987,17 +949,7 @@ func (c [[.controllerName]]) Update(id int64, [[camelizeDownFirst .class.Name]] 
 
   err := c.Lifecycle.DB.[[.modelName]]().ID(id).Update([[camelizeDownFirst .class.Name]])
   if err != nil {
-    if err == orm.ErrNotFound {
-      c.Flash.Error(revel.Message(c.Request.Locale, "update.record_not_found"))
-    } else {
-      if oerr, ok := err.(*orm.Error); ok {
-        for _, validation := range oerr.Validations {
-          c.Validation.Error(validation.Message).Key(models.KeyFor[[.modelName]](validation.Key))
-        }
-        c.Validation.Keep()
-      }
-      c.Flash.Error(err.Error())
-    }
+    c.ErrorToFlash(err)
     c.FlashParams()
     return c.Redirect(routes.[[.controllerName]].Edit(id))
   }
@@ -1042,11 +994,7 @@ func (c [[.controllerName]]) Delete([[- range $idx, $fieldName := .class.Primary
 
   rowsEffected, err :=  c.Lifecycle.DB.[[.modelName]]().Where(cond).Delete()
   if nil != err {
-    if err == orm.ErrNotFound {
-      c.Flash.Error(revel.Message(c.Request.Locale, "delete.record_not_found"))
-    } else {
-      c.Flash.Error(err.Error())
-    }
+    c.ErrorToFlash(err, "delete.record_not_found")
   } else if rowsEffected <= 0 {
     c.Flash.Error(revel.Message(c.Request.Locale, "delete.record_not_found"))
   } else {
@@ -1059,11 +1007,7 @@ func (c [[.controllerName]]) Delete([[- range $idx, $fieldName := .class.Primary
 func (c [[.controllerName]]) Delete(id int64) revel.Result {
   err :=  c.Lifecycle.DB.[[.modelName]]().ID(id).Delete()
   if nil != err {
-    if err == orm.ErrNotFound {
-      c.Flash.Error(revel.Message(c.Request.Locale, "delete.record_not_found"))
-    } else {
-      c.Flash.Error(err.Error())
-    }
+    c.ErrorToFlash(err, "delete.record_not_found")
   } else {
     c.Flash.Success(revel.Message(c.Request.Locale, "delete.success"))
   }
@@ -1832,7 +1776,7 @@ func (db *DB) Query(sqlStr string, args ...interface{}) orm.Queryer {
 func (db *DB) [[pluralize $class.Name]]() *orm.Collection {
   return orm.New(func() interface{}{
     return &[[$class.Name]]{}
-  })(db.Engine).WithSession(db.session)
+  }, KeyFor[[pluralize $class.Name]])(db.Engine).WithSession(db.session)
 }
 [[- end]]
 
