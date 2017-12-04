@@ -732,7 +732,7 @@ type [[.controllerName]] struct {
 
 // Index 列出所有记录
 func (c [[.controllerName]]) Index() revel.Result {
-  var page = c.pagingParams()
+  var page = c.PagingParams()
 
   var cond orm.Cond
   var query string
@@ -838,9 +838,8 @@ func (c [[.controllerName]]) IndexAsync(id int64) revel.Result {
 
 [[- if .class.BelongsTo -]]
   [[- range $idx, $belongsTo := .class.BelongsTo ]]
-  [[- $targetName := pluralize $belongsTo.Target]]
-  [[- $varName := camelizeDownFirst $targetName]]
-  
+
+  [[- /* $belongsTo 是否已存在 */]]
   [[- set $ "targetIsExists" false]]
   [[- range $sidx, $b := $.class.BelongsTo]]
     [[- if eq $belongsTo.Target $b.Target -]]
@@ -851,6 +850,10 @@ func (c [[.controllerName]]) IndexAsync(id int64) revel.Result {
   [[- end -]]
 
   [[- if not $.targetIsExists ]]
+
+    [[- $targetName := pluralize $belongsTo.Target]]
+    [[- $varName := camelizeDownFirst $targetName]]
+
 func (c [[$.controllerName]]) with[[$targetName]]() ([]models.[[$belongsTo.Target]], error) {
   var [[$varName]] []models.[[$belongsTo.Target]]
   err := c.Lifecycle.DB.[[$targetName]]().Where().
@@ -881,7 +884,8 @@ func (c [[$.controllerName]]) with[[$targetName]]() ([]models.[[$belongsTo.Targe
   c.ViewArgs["[[$varName]]"] = opt[[$targetName]]
   return [[$varName]], nil
 }
-    [[- end]][[/* if not  .targetIsExists */]]
+
+    [[- end]] [[/* if not $.targetIsExists */]]
   [[- end]][[/* range .class.BelongsTo */]]
 [[- end]][[/* if .class.BelongsTo */]]
 
@@ -892,10 +896,23 @@ func (c [[.controllerName]]) New() revel.Result {
 [[- if .class.BelongsTo -]]
   [[- range $idx, $belongsTo := .class.BelongsTo ]]
   [[- $targetName := pluralize $belongsTo.Target]]
+
+    [[- /* $belongsTo 是否已存在 */]]
+  [[- set $ "targetIsExists" false]]
+  [[- range $sidx, $b := $.class.BelongsTo]]
+    [[- if eq $belongsTo.Target $b.Target -]]
+    [[- if lt $sidx $idx -]]
+      [[- set $ "targetIsExists" true]]
+    [[- end ]]
+    [[- end ]]
+  [[- end -]]
+
+  [[- if not $.targetIsExists ]]
   c.with[[$targetName]]()
+  [[- end]][[/* if not $.targetIsExists */]]
+
   [[- end]][[/* range .class.BelongsTo */]]
 [[- end]][[/* if .class.BelongsTo */]]
-
   return c.Render()
 }
 
@@ -933,7 +950,21 @@ func (c [[.controllerName]]) Edit(id int64) revel.Result {
 [[ if .class.BelongsTo -]]
   [[- range $idx, $belongsTo := .class.BelongsTo ]]
   [[- $targetName := pluralize $belongsTo.Target]]
+  
+  [[- /* $belongsTo 是否已存在 */]]
+  [[- set $ "targetIsExists" false]]
+  [[- range $sidx, $b := $.class.BelongsTo]]
+    [[- if eq $belongsTo.Target $b.Target -]]
+    [[- if lt $sidx $idx -]]
+      [[- set $ "targetIsExists" true]]
+    [[- end ]]
+    [[- end ]]
+  [[- end -]]
+
+  [[- if not $.targetIsExists ]]
   c.with[[$targetName]]()
+  [[- end]][[/* if not $.targetIsExists */]]
+
   [[- end]][[/* range .class.BelongsTo */]]
 [[- end]][[/* if .class.BelongsTo */]]
   return c.Render([[camelizeDownFirst .class.Name]])
