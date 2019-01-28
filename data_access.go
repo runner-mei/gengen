@@ -66,11 +66,11 @@ type dbBase struct {
 }
 
 func (cmd *dbBase) initFlags(fs *flag.FlagSet) *flag.FlagSet {
-	fs.StringVar(&cmd.dbURL, "db_url", "host=127.0.0.1 port=35432 dbname=tpt user=tpt password=extreme sslmode=disable", "the db url")
+	fs.StringVar(&cmd.dbURL, "db_url", "host=127.0.0.1 port=5432 dbname=test user=postgresql password=123456 sslmode=disable", "the db url")
 	fs.StringVar(&cmd.dbDrv, "db_drv", "postgres", "the db driver")
-	fs.StringVar(&cmd.dbCatalog, "db_catalog", "tpt", "the db schema")
+	fs.StringVar(&cmd.dbCatalog, "db_catalog", "test", "the db schema")
 	fs.StringVar(&cmd.dbSchema, "db_schema", "public", "the db schema")
-	fs.StringVar(&cmd.dbPrefix, "db_prefix", "tpt_", "the db prefix name")
+	fs.StringVar(&cmd.dbPrefix, "db_prefix", "test_", "the db prefix name")
 	return fs
 }
 
